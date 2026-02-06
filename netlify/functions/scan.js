@@ -2,33 +2,58 @@
 // Place this file in: netlify/functions/scan.js
 
 exports.handler = async (event, context) => {
+  console.log('Scan function called');
+  
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      },
+      body: ''
+    };
+  }
+
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: { 'Access-Control-Allow-Origin': '*' },
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
 
   try {
     const { image } = JSON.parse(event.body);
+    console.log('Image received, length:', image?.length);
 
     if (!image) {
       return {
         statusCode: 400,
+        headers: { 'Access-Control-Allow-Origin': '*' },
         body: JSON.stringify({ error: 'No image provided' })
       };
     }
 
-    // OpenAI API key from environment variable (set in Netlify dashboard)
+    // OpenAI API key from environment variable
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    console.log('API Key exists:', !!OPENAI_API_KEY);
 
     if (!OPENAI_API_KEY) {
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: 'OpenAI API key not configured' })
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ 
+          error: 'OpenAI API key not configured',
+          hint: 'Set OPENAI_API_KEY in Netlify environment variables'
+        })
       };
     }
+
+    console.log('Calling OpenAI API...');
 
     // Call OpenAI Vision API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -56,19 +81,30 @@ exports.handler = async (event, context) => {
       })
     });
 
+    console.log('OpenAI response status:', response.status);
+
     if (!response.ok) {
       const error = await response.text();
       console.error('OpenAI API error:', error);
       return {
         statusCode: response.status,
-        body: JSON.stringify({ error: 'Failed to scan receipt' })
+        headers: { 'Access-Control-Allow-Origin': '*' },
+        body: JSON.stringify({ 
+          error: 'Failed to scan receipt',
+          details: error,
+          status: response.status
+        })
       };
     }
 
     const data = await response.json();
+    console.log('OpenAI response received');
+    
     const content = data.choices[0].message.content;
     const clean = content.replace(/```json\n?|\n?```/g, '').trim();
     const parsed = JSON.parse(clean);
+
+    console.log('Successfully parsed receipt');
 
     return {
       statusCode: 200,
@@ -83,7 +119,12 @@ exports.handler = async (event, context) => {
     console.error('Scan function error:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error' })
+      headers: { 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ 
+        error: 'Internal server error',
+        message: error.message,
+        stack: error.stack
+      })
     };
   }
 };
