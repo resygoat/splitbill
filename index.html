@@ -223,20 +223,41 @@
         };
       };
 
-      // Scan receipt using serverless function
+      // Scan receipt using serverless function - IMPROVED WITH LOGGING
       const scanReceipt = async (base64Image) => {
         try {
           setScanning(true);
           
+          console.log('🚀 Starting scan...');
+          console.log('📸 Image size:', (base64Image.length / 1024).toFixed(2), 'KB');
+          
+          // Add 30 second timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
           const response = await fetch('/.netlify/functions/scan', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Image })
+            body: JSON.stringify({ image: base64Image }),
+            signal: controller.signal
           });
 
-          if (!response.ok) throw new Error('Scan failed');
+          clearTimeout(timeoutId);
+          
+          console.log('✅ Response received - Status:', response.status);
 
-          const parsed = await response.json();
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Error response:', errorText);
+            throw new Error(`Scan failed (${response.status}): ${errorText}`);
+          }
+
+          const responseText = await response.text();
+          console.log('📄 Response length:', responseText.length);
+          console.log('📄 Response preview:', responseText.substring(0, 100));
+
+          const parsed = JSON.parse(responseText);
+          console.log('✅ Parsed receipt:', parsed);
 
           const newReceipt = {
             merchant: parsed.merchant || 'Unknown',
@@ -248,12 +269,22 @@
             total: parseFloat(parsed.total) || 0
           };
 
+          console.log('✅ Final receipt object:', newReceipt);
+          
           setReceipt(newReceipt);
           await createBillRoom(newReceipt);
           setScreen("review");
+          
         } catch (err) {
-          console.error(err);
-          alert("Scan failed. Try clearer photo.");
+          console.error('❌ SCAN ERROR:', err);
+          console.error('Error name:', err.name);
+          console.error('Error message:', err.message);
+          
+          if (err.name === 'AbortError') {
+            alert("⏱️ Scan timed out (took > 30 seconds). Try a smaller/clearer image.");
+          } else {
+            alert(`❌ Scan failed: ${err.message}\n\nCheck browser console (F12) for details.`);
+          }
         } finally {
           setScanning(false);
         }
@@ -498,7 +529,7 @@
 
       // Update user settings
       const updateVenmo = async (venmoUsername) => {
-        const { error } = await supabaseClient
+        const { error} = await supabaseClient
           .from('users')
           .update({ venmo_username: venmoUsername })
           .eq('id', user.id);
@@ -615,7 +646,7 @@
       );
     }
 
-    // Component definitions
+    // Component definitions - ALL UI EXACTLY THE SAME
     function SignIn({ onSignIn, onSwitch }) {
       const [email, setEmail] = useState('');
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
