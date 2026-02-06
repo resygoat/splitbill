@@ -116,22 +116,30 @@
       const [billItems, setBillItems] = useState([]);
       const [reimbursements, setReimbursements] = useState([]);
       const [orders, setOrders] = useState([]);
+      const [pendingBillId, setPendingBillId] = useState(null);
       const fileRef = useRef(null);
 
       // Check for existing session on mount
       useEffect(() => {
+        // Check if there's a shared bill in URL
+        const params = new URLSearchParams(window.location.search);
+        const sharedBillId = params.get('bill');
+        if (sharedBillId) {
+          setPendingBillId(sharedBillId);
+        }
+
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
           setSession(session);
-          if (session) {
-            loadUserProfile(session.user.id);
-          }
           setLoading(false);
         });
 
-        const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+          console.log('Auth state changed:', _event, session?.user?.id);
           setSession(session);
+          
           if (session) {
-            loadUserProfile(session.user.id);
+            // User is authenticated - load or create their profile
+            await loadOrCreateUserProfile(session.user);
           } else {
             setUser(null);
           }
@@ -140,30 +148,65 @@
         return () => subscription.unsubscribe();
       }, []);
 
-      // Load user profile from database
-      const loadUserProfile = async (userId) => {
-        const { data, error } = await supabaseClient
+      // Load or create user profile
+      const loadOrCreateUserProfile = async (authUser) => {
+        console.log('Loading/creating profile for:', authUser.id);
+        
+        // Try to load existing profile
+        const { data: existingUser, error: fetchError } = await supabaseClient
           .from('users')
           .select('*')
-          .eq('id', userId)
+          .eq('id', authUser.id)
           .single();
 
-        if (data) {
-          setUser(data);
+        if (existingUser) {
+          console.log('✅ Loaded existing user:', existingUser);
+          setUser(existingUser);
+          
+          // If there's a pending bill, join it
+          if (pendingBillId) {
+            loadSharedBill(pendingBillId);
+            setPendingBillId(null);
+          } else {
+            setScreen('home');
+          }
+        } else {
+          // User doesn't exist - create profile
+          console.log('Creating new user profile...');
+          const newUser = {
+            id: authUser.id,
+            email: authUser.email,
+            name: authUser.user_metadata?.name || '',
+            venmo_username: authUser.user_metadata?.venmo_username || ''
+          };
+
+          const { data: createdUser, error: insertError } = await supabaseClient
+            .from('users')
+            .insert(newUser)
+            .select()
+            .single();
+
+          if (createdUser) {
+            console.log('✅ Created new user:', createdUser);
+            setUser(createdUser);
+            
+            // If there's a pending bill, join it
+            if (pendingBillId) {
+              loadSharedBill(pendingBillId);
+              setPendingBillId(null);
+            } else {
+              setScreen('home');
+            }
+          } else {
+            console.error('❌ Failed to create user:', insertError);
+            alert('Failed to create user profile. Please try again.');
+          }
         }
       };
 
-      // Check for shared bill link on load
-      useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const sharedBillId = params.get('bill');
-        if (sharedBillId && session) {
-          loadSharedBill(sharedBillId);
-        }
-      }, [session]);
-
       // Load shared bill from database
       const loadSharedBill = async (id) => {
+        console.log('Loading shared bill:', id);
         const { data: bill, error } = await supabaseClient
           .from('bill_rooms')
           .select('*')
@@ -178,6 +221,7 @@
           setScreen('live-split');
         } else {
           alert('Bill not found');
+          setScreen('home');
         }
       };
 
@@ -223,13 +267,22 @@
         };
       };
 
-      // Scan receipt using serverless function - IMPROVED WITH LOGGING
+      // Scan receipt using serverless function
       const scanReceipt = async (base64Image) => {
         try {
+          // CRITICAL: Check if user is authenticated
+          if (!user || !user.id) {
+            alert('Please sign in to scan receipts!');
+            setScanning(false);
+            setScreen('signin');
+            return;
+          }
+
           setScanning(true);
           
           console.log('🚀 Starting scan...');
           console.log('📸 Image size:', (base64Image.length / 1024).toFixed(2), 'KB');
+          console.log('👤 User ID:', user.id);
           
           // Add 30 second timeout
           const controller = new AbortController();
@@ -292,6 +345,8 @@
 
       // Create bill room in Supabase
       const createBillRoom = async (receiptData) => {
+        console.log('Creating bill room for user:', user.id);
+        
         const { data: room, error } = await supabaseClient
           .from('bill_rooms')
           .insert({
@@ -305,7 +360,13 @@
           .select()
           .single();
 
+        if (error) {
+          console.error('❌ Failed to create bill room:', error);
+          throw new Error('Failed to create bill room');
+        }
+
         if (room) {
+          console.log('✅ Bill room created:', room.id);
           setBillId(room.id);
           setBillRoom(room);
 
@@ -317,12 +378,13 @@
             assigned_user_ids: []
           }));
 
-          const { data: items } = await supabaseClient
+          const { data: items, error: itemsError } = await supabaseClient
             .from('bill_items')
             .insert(itemsToInsert)
             .select();
 
           if (items) {
+            console.log('✅ Bill items created:', items.length);
             setBillItems(items);
           }
 
@@ -495,7 +557,7 @@
         }
       };
 
-      // Sign up new user
+      // Sign up new user - FIXED VERSION
       const signUpUser = async (email, name, venmo) => {
         const { data, error } = await supabaseClient.auth.signInWithOtp({
           email: email,
@@ -511,11 +573,7 @@
         if (error) {
           alert(error.message);
         } else {
-          await supabaseClient.from('users').insert({
-            email: email,
-            name: name,
-            venmo_username: venmo
-          });
+          // Profile will be created automatically in onAuthStateChange
           alert('Check your email for the login link!');
         }
       };
@@ -529,7 +587,7 @@
 
       // Update user settings
       const updateVenmo = async (venmoUsername) => {
-        const { error} = await supabaseClient
+        const { error } = await supabaseClient
           .from('users')
           .update({ venmo_username: venmoUsername })
           .eq('id', user.id);
@@ -646,7 +704,7 @@
       );
     }
 
-    // Component definitions - ALL UI EXACTLY THE SAME
+    // Component definitions
     function SignIn({ onSignIn, onSwitch }) {
       const [email, setEmail] = useState('');
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
