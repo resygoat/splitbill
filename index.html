@@ -24,18 +24,16 @@
   <script>
     const { useState, useEffect, useRef, createElement: h } = React;
 
-    // Initialize Supabase client
     const SUPABASE_URL = 'https://yeodatnrpkbrlfhrgjua.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inllb2RhdG5ycGticmxmaHJnanVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMzUyNjUsImV4cCI6MjA4NTkxMTI2NX0.MRZ8IktqD-lw4vggf3EqhfZtnbKt6zQffK6GwesASm4';
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Platform fee calculation
     const calculatePlatformFee = (amount) => {
       const fee = 0.25 + (amount * 0.015);
       return Math.min(fee, 1.99);
     };
 
-    // Icons (keeping all the same)
+    // Icons
     const Camera = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('path', { d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" }),
       h('circle', { cx: "12", cy: "13", r: "4" })
@@ -45,10 +43,6 @@
       h('circle', { cx: "9", cy: "7", r: "4" }),
       h('path', { d: "M23 21v-2a4 4 0 0 0-3-3.87" }),
       h('path', { d: "M16 3.13a4 4 0 0 1 0 7.75" })
-    );
-    const DollarSign = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-      h('line', { x1: "12", y1: "1", x2: "12", y2: "23" }),
-      h('path', { d: "M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" })
     );
     const CreditCard = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('rect', { x: "1", y: "4", width: "22", height: "16", rx: "2", ry: "2" }),
@@ -71,13 +65,6 @@
       h('line', { x1: "19", y1: "12", x2: "5", y2: "12" }),
       h('polyline', { points: "12 19 5 12 12 5" })
     );
-    const Plus = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-      h('line', { x1: "12", y1: "5", x2: "12", y2: "19" }),
-      h('line', { x1: "5", y1: "12", x2: "19", y2: "12" })
-    );
-    const Minus = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-      h('line', { x1: "5", y1: "12", x2: "19", y2: "12" })
-    );
     const Scan = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('path', { d: "M3 7V5a2 2 0 0 1 2-2h2" }),
       h('path', { d: "M17 3h2a2 2 0 0 1 2 2v2" }),
@@ -91,12 +78,6 @@
       h('circle', { cx: "18", cy: "19", r: "3" }),
       h('line', { x1: "8.59", y1: "13.51", x2: "15.42", y2: "17.49" }),
       h('line', { x1: "15.41", y1: "6.51", x2: "8.59", y2: "10.49" })
-    );
-    const UserPlus = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-      h('path', { d: "M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }),
-      h('circle', { cx: "8.5", cy: "7", r: "4" }),
-      h('line', { x1: "20", y1: "8", x2: "20", y2: "14" }),
-      h('line', { x1: "23", y1: "11", x2: "17", y2: "11" })
     );
     const Lock = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('rect', { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }),
@@ -119,19 +100,18 @@
       const [pendingBillId, setPendingBillId] = useState(null);
       const fileRef = useRef(null);
 
-      // Check for existing session on mount
       useEffect(() => {
         console.log('🚀 App starting...');
         
         const params = new URLSearchParams(window.location.search);
         const sharedBillId = params.get('bill');
         if (sharedBillId) {
-          console.log('📎 Found shared bill:', sharedBillId);
+          console.log('📎 Shared bill:', sharedBillId);
           setPendingBillId(sharedBillId);
         }
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
-          console.log('Session:', session ? 'Found' : 'None');
+          console.log('Initial session:', session ? 'Found' : 'None');
           setSession(session);
           
           if (session) {
@@ -159,64 +139,78 @@
       const loadUserProfile = async (userId) => {
         console.log('📥 Loading profile:', userId);
         
-        const { data, error } = await supabaseClient
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single();
+        try {
+          const { data, error } = await supabaseClient
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single();
 
-        if (data) {
-          console.log('✅ Profile loaded:', data.name);
-          setUser(data);
-          
-          if (pendingBillId) {
-            loadSharedBill(pendingBillId);
-            setPendingBillId(null);
+          if (data) {
+            console.log('✅ User found:', data.name);
+            setUser(data);
+            
+            if (pendingBillId) {
+              await loadSharedBill(pendingBillId);
+              setPendingBillId(null);
+            }
+          } else {
+            console.log('⚠️ No profile found');
           }
+        } catch (err) {
+          console.error('Profile load error:', err);
+        } finally {
+          // CRITICAL: Always set loading to false
+          console.log('Setting loading to false');
+          setLoading(false);
         }
-        
-        setLoading(false);
       };
 
       const loadOrCreateUserProfile = async (authUser) => {
         console.log('🔍 Load/create profile:', authUser.id);
         
-        const { data: existingUser } = await supabaseClient
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-
-        if (existingUser) {
-          console.log('✅ User found:', existingUser.name);
-          setUser(existingUser);
-        } else {
-          console.log('➕ Creating profile...');
-          const newUser = {
-            id: authUser.id,
-            email: authUser.email,
-            name: authUser.user_metadata?.name || '',
-            venmo_username: authUser.user_metadata?.venmo_username || ''
-          };
-
-          const { data: createdUser } = await supabaseClient
+        try {
+          const { data: existingUser } = await supabaseClient
             .from('users')
-            .insert(newUser)
-            .select()
+            .select('*')
+            .eq('id', authUser.id)
             .single();
 
-          if (createdUser) {
-            console.log('✅ Profile created:', createdUser.name);
-            setUser(createdUser);
+          if (existingUser) {
+            console.log('✅ User found:', existingUser.name);
+            setUser(existingUser);
+          } else {
+            console.log('➕ Creating profile...');
+            const newUser = {
+              id: authUser.id,
+              email: authUser.email,
+              name: authUser.user_metadata?.name || '',
+              venmo_username: authUser.user_metadata?.venmo_username || ''
+            };
+
+            const { data: createdUser } = await supabaseClient
+              .from('users')
+              .insert(newUser)
+              .select()
+              .single();
+
+            if (createdUser) {
+              console.log('✅ Profile created:', createdUser.name);
+              setUser(createdUser);
+            }
           }
+          
+          if (pendingBillId) {
+            await loadSharedBill(pendingBillId);
+            setPendingBillId(null);
+          }
+        } catch (err) {
+          console.error('Profile create error:', err);
+        } finally {
+          // CRITICAL: Always set loading to false
+          console.log('Setting loading to false');
+          setLoading(false);
         }
-        
-        if (pendingBillId) {
-          loadSharedBill(pendingBillId);
-          setPendingBillId(null);
-        }
-        
-        setLoading(false);
       };
 
       const loadSharedBill = async (id) => {
@@ -229,7 +223,7 @@
         if (bill) {
           setBillId(id);
           setBillRoom(bill);
-          loadBillItems(id);
+          await loadBillItems(id);
           subscribeToRealtime(id);
           setScreen('live-split');
         }
@@ -250,9 +244,7 @@
           .on('postgres_changes', 
             { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
             (payload) => {
-              if (payload.eventType === 'UPDATE') {
-                setBillRoom(payload.new);
-              }
+              if (payload.eventType === 'UPDATE') setBillRoom(payload.new);
             }
           )
           .subscribe();
@@ -264,17 +256,12 @@
             () => loadBillItems(billRoomId)
           )
           .subscribe();
-
-        return () => {
-          supabaseClient.removeChannel(roomChannel);
-          supabaseClient.removeChannel(itemsChannel);
-        };
       };
 
       const scanReceipt = async (base64Image) => {
         try {
-          if (!user || !user.id) {
-            alert('Please sign in to scan receipts!');
+          if (!user?.id) {
+            alert('Please sign in first!');
             setScanning(false);
             setScreen('signin');
             return;
@@ -361,9 +348,8 @@
         if (file) {
           const reader = new FileReader();
           reader.onloadend = () => {
-            const base64 = reader.result;
-            setImage(base64);
-            scanReceipt(base64);
+            setImage(reader.result);
+            scanReceipt(reader.result);
           };
           reader.readAsDataURL(file);
         }
@@ -375,24 +361,17 @@
         
         if (navigator.share) {
           try {
-            await navigator.share({
-              title: 'Join my bill',
-              text: 'Split this restaurant bill with me',
-              url: shareUrl
-            });
+            await navigator.share({ title: 'Join my bill', url: shareUrl });
           } catch (err) {
             if (err.name !== 'AbortError') {
-              fallbackCopyToClipboard(shareUrl);
+              await navigator.clipboard.writeText(shareUrl);
+              alert('Link copied!');
             }
           }
         } else {
-          fallbackCopyToClipboard(shareUrl);
+          await navigator.clipboard.writeText(shareUrl);
+          alert('Link copied!');
         }
-      };
-
-      const fallbackCopyToClipboard = async (url) => {
-        await navigator.clipboard.writeText(url);
-        alert('Share link copied!');
       };
 
       const toggleItemAssignment = async (itemId, userId) => {
@@ -411,23 +390,16 @@
       };
 
       const finalizeBill = async () => {
-        if (!billRoom || !billId) return;
-
         if (!user.venmo_username) {
-          alert('Please set your Venmo username in Settings!');
+          alert('Set Venmo username in Settings first!');
           setScreen('settings');
           return;
         }
 
-        await supabaseClient
-          .from('bill_rooms')
-          .update({ status: 'finalized' })
-          .eq('id', billId);
+        await supabaseClient.from('bill_rooms').update({ status: 'finalized' }).eq('id', billId);
 
         const participantIds = new Set();
-        billItems.forEach(item => {
-          item.assigned_user_ids?.forEach(uid => participantIds.add(uid));
-        });
+        billItems.forEach(item => item.assigned_user_ids?.forEach(uid => participantIds.add(uid)));
 
         const personSubtotals = {};
         Array.from(participantIds).forEach(uid => { personSubtotals[uid] = 0; });
@@ -435,11 +407,8 @@
         billItems.forEach(item => {
           const assigned = item.assigned_user_ids || [];
           if (assigned.length > 0) {
-            const itemTotal = item.price * item.quantity;
-            const sharePerPerson = itemTotal / assigned.length;
-            assigned.forEach(uid => {
-              personSubtotals[uid] = (personSubtotals[uid] || 0) + sharePerPerson;
-            });
+            const sharePerPerson = (item.price * item.quantity) / assigned.length;
+            assigned.forEach(uid => { personSubtotals[uid] += sharePerPerson; });
           }
         });
 
@@ -454,13 +423,12 @@
             const personTip = (subtotal + personTax) * tipRate;
             const baseAmount = subtotal + personTax + personTip;
             const platformFee = calculatePlatformFee(baseAmount);
-            const total = baseAmount + platformFee;
 
             reimbursementsToInsert.push({
               bill_room_id: billId,
               from_user_id: uid,
               to_user_id: user.id,
-              amount: total,
+              amount: baseAmount + platformFee,
               base_amount: baseAmount,
               platform_fee: platformFee,
               paid_status: false
@@ -469,64 +437,35 @@
         }
 
         if (reimbursementsToInsert.length > 0) {
-          const { data } = await supabaseClient
-            .from('reimbursements')
-            .insert(reimbursementsToInsert)
-            .select();
-
+          const { data } = await supabaseClient.from('reimbursements').insert(reimbursementsToInsert).select();
           if (data) setReimbursements(data);
         }
 
         setScreen('payment-summary');
       };
 
-      const markAsPaid = async (reimbursementId) => {
-        await supabaseClient
-          .from('reimbursements')
-          .update({ paid_status: true })
-          .eq('id', reimbursementId);
-
-        setReimbursements(reimbursements.map(r => 
-          r.id === reimbursementId ? { ...r, paid_status: true } : r
-        ));
+      const markAsPaid = async (id) => {
+        await supabaseClient.from('reimbursements').update({ paid_status: true }).eq('id', id);
+        setReimbursements(reimbursements.map(r => r.id === id ? { ...r, paid_status: true } : r));
       };
 
       const openVenmoPayment = (amount, hostVenmo, merchant) => {
-        const note = encodeURIComponent(`Split - ${merchant}`);
-        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostVenmo}&amount=${amount.toFixed(2)}&note=${note}`;
+        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostVenmo}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(`Split - ${merchant}`)}`;
         window.open(venmoUrl, '_blank');
       };
 
-      // SIGN IN WITH PASSWORD
       const signInWithPassword = async (email, password) => {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
-
-        if (error) {
-          alert(error.message);
-        }
-        // Auth state change will handle the rest
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) alert(error.message);
       };
 
-      // SIGN UP WITH PASSWORD
       const signUpWithPassword = async (email, password, name, venmo) => {
-        const { data, error } = await supabaseClient.auth.signUp({
-          email: email,
-          password: password,
-          options: {
-            data: {
-              name: name,
-              venmo_username: venmo
-            }
-          }
+        const { error } = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: { data: { name, venmo_username: venmo } }
         });
-
-        if (error) {
-          alert(error.message);
-        }
-        // Auth state change will handle profile creation
+        if (error) alert(error.message);
       };
 
       const signOut = async () => {
@@ -535,16 +474,10 @@
         setScreen('splash');
       };
 
-      const updateVenmo = async (venmoUsername) => {
-        const { error } = await supabaseClient
-          .from('users')
-          .update({ venmo_username: venmoUsername })
-          .eq('id', user.id);
-
-        if (!error) {
-          setUser({ ...user, venmo_username: venmoUsername });
-          alert('Venmo username saved!');
-        }
+      const updateVenmo = async (venmo) => {
+        await supabaseClient.from('users').update({ venmo_username: venmo }).eq('id', user.id);
+        setUser({ ...user, venmo_username: venmo });
+        alert('Saved!');
       };
 
       if (loading) {
@@ -566,126 +499,34 @@
         h('button', { onClick: () => setScreen(session ? 'home' : 'signin'), className: "bg-white text-blue-600 px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-100 transition" }, "Get Started")
       );
 
-      if (screen === 'signin') return h(SignIn, { 
-        onSignIn: signInWithPassword,
-        onSwitch: () => setScreen('signup') 
-      });
-
-      if (screen === 'signup') return h(SignUp, { 
-        onSignUp: signUpWithPassword,
-        onSwitch: () => setScreen('signin') 
-      });
-
-      if (screen === 'settings') return h(Settings, {
-        user: user,
-        onSave: (venmo) => {
-          updateVenmo(venmo);
-          setScreen('home');
-        },
-        onBack: () => setScreen('home')
-      });
-
-      if (screen === 'home') return h(HomeScreen, {
-        user,
-        onScan: () => fileRef.current?.click(),
-        onTrack: () => setScreen('track'),
-        onSettings: () => setScreen('settings'),
-        onLogout: signOut,
-        orders,
-        fileRef,
-        handleUpload
-      });
-
-      if (screen === 'review') return h(ReviewScreen, {
-        receipt,
-        onBack: () => setScreen('home'),
-        onStartSplit: () => {
-          if (!user.venmo_username) {
-            alert('Set Venmo username in Settings!');
-            setScreen('settings');
-          } else {
-            setScreen('live-split');
-          }
-        }
-      });
-
-      if (screen === 'live-split') return h(LiveSplitScreen, {
-        billRoom,
-        billItems,
-        user,
-        onBack: () => setScreen('home'),
-        onShare: shareBill,
-        onToggleItem: toggleItemAssignment,
-        onFinalize: finalizeBill
-      });
-
-      if (screen === 'payment-summary') return h(PaymentSummaryScreen, {
-        billRoom,
-        billItems,
-        reimbursements,
-        user,
-        receipt,
-        onBack: () => setScreen('home'),
-        onPay: openVenmoPayment,
-        onMarkPaid: markAsPaid,
-        onComplete: () => setScreen('done')
-      });
-
-      if (screen === 'done') return h(DoneScreen, {
-        onHome: () => {
-          setReceipt(null);
-          setImage(null);
-          setBillId(null);
-          setBillRoom(null);
-          setBillItems([]);
-          setReimbursements([]);
-          setScreen('home');
-        }
-      });
-
-      if (screen === 'track') return h(TrackScreen, {
-        orders,
-        onBack: () => setScreen('home')
-      });
+      if (screen === 'signin') return h(SignIn, { onSignIn: signInWithPassword, onSwitch: () => setScreen('signup') });
+      if (screen === 'signup') return h(SignUp, { onSignUp: signUpWithPassword, onSwitch: () => setScreen('signin') });
+      if (screen === 'settings') return h(Settings, { user, onSave: (v) => { updateVenmo(v); setScreen('home'); }, onBack: () => setScreen('home') });
+      if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
+      if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => user.venmo_username ? setScreen('live-split') : (alert('Set Venmo in Settings!'), setScreen('settings')) });
+      if (screen === 'live-split') return h(LiveSplitScreen, { billRoom, billItems, user, onBack: () => setScreen('home'), onShare: shareBill, onToggleItem: toggleItemAssignment, onFinalize: finalizeBill });
+      if (screen === 'payment-summary') return h(PaymentSummaryScreen, { billRoom, billItems, reimbursements, user, receipt, onBack: () => setScreen('home'), onPay: openVenmoPayment, onMarkPaid: markAsPaid, onComplete: () => setScreen('done') });
+      if (screen === 'done') return h(DoneScreen, { onHome: () => { setReceipt(null); setImage(null); setBillId(null); setBillRoom(null); setBillItems([]); setReimbursements([]); setScreen('home'); } });
+      if (screen === 'track') return h(TrackScreen, { orders, onBack: () => setScreen('home') });
 
       return h('div', { className: "flex items-center justify-center h-full bg-red-50" },
-        h('div', { className: "text-red-700 text-2xl" }, "Screen not found")
+        h('div', { className: "text-red-700 text-2xl" }, "Error")
       );
     }
 
-    // SIGN IN COMPONENT WITH PASSWORD
     function SignIn({ onSignIn, onSwitch }) {
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
       
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
         h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign In"),
-        h('input', { 
-          type: "email", 
-          placeholder: "Email", 
-          value: email, 
-          onChange: (e) => setEmail(e.target.value), 
-          className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('input', { 
-          type: "password", 
-          placeholder: "Password", 
-          value: password, 
-          onChange: (e) => setPassword(e.target.value), 
-          className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('button', { 
-          onClick: () => onSignIn(email, password), 
-          className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" 
-        }, "Sign In"),
-        h('button', { 
-          onClick: onSwitch, 
-          className: "text-blue-600 text-center" 
-        }, "Don't have an account? Sign up")
+        h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('button', { onClick: () => onSignIn(email, password), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" }, "Sign In"),
+        h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Don't have an account? Sign up")
       );
     }
 
-    // SIGN UP COMPONENT WITH PASSWORD
     function SignUp({ onSignUp, onSwitch }) {
       const [name, setName] = useState('');
       const [email, setEmail] = useState('');
@@ -694,71 +535,26 @@
       
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
         h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign Up"),
-        h('input', { 
-          type: "text", 
-          placeholder: "Full Name", 
-          value: name, 
-          onChange: (e) => setName(e.target.value), 
-          className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('input', { 
-          type: "email", 
-          placeholder: "Email", 
-          value: email, 
-          onChange: (e) => setEmail(e.target.value), 
-          className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('input', { 
-          type: "password", 
-          placeholder: "Password (min 6 characters)", 
-          value: password, 
-          onChange: (e) => setPassword(e.target.value), 
-          className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('input', { 
-          type: "text", 
-          placeholder: "Venmo Username (e.g., johnsmith)", 
-          value: venmo, 
-          onChange: (e) => setVenmo(e.target.value), 
-          className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-        }),
-        h('button', { 
-          onClick: () => onSignUp(email, password, name, venmo), 
-          className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" 
-        }, "Create Account"),
-        h('button', { 
-          onClick: onSwitch, 
-          className: "text-blue-600 text-center" 
-        }, "Already have an account? Sign in")
+        h('input', { type: "text", placeholder: "Full Name", value: name, onChange: (e) => setName(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "text", placeholder: "Venmo Username", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('button', { onClick: () => onSignUp(email, password, name, venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" }, "Create Account"),
+        h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Already have an account? Sign in")
       );
     }
 
-    // Settings, HomeScreen, ReviewScreen, LiveSplitScreen, PaymentSummaryScreen, DoneScreen, TrackScreen
-    // (Same as before - keeping them exactly the same)
-    
     function Settings({ user, onSave, onBack }) {
       const [venmo, setVenmo] = useState(user?.venmo_username || '');
       return h('div', { className: "flex flex-col h-full bg-white" },
-        h('div', { className: "p-6 border-b border-gray-200" },
+        h('div', { className: "p-6 border-b" },
           h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-          h('div', { className: "text-2xl font-bold text-gray-800" }, "Settings")
+          h('div', { className: "text-2xl font-bold" }, "Settings")
         ),
-        h('div', { className: "flex-1 p-6" },
-          h('div', { className: "mb-6" },
-            h('label', { className: "block text-sm font-semibold text-gray-700 mb-2" }, "Venmo Username"),
-            h('input', { 
-              type: "text", 
-              value: venmo, 
-              onChange: (e) => setVenmo(e.target.value), 
-              placeholder: "e.g., johnsmith", 
-              className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" 
-            }),
-            h('div', { className: "text-sm text-gray-500 mt-2" }, "Friends will pay you at @" + (venmo || "username"))
-          ),
-          h('button', { 
-            onClick: () => onSave(venmo), 
-            className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition" 
-          }, "Save Settings")
+        h('div', { className: "p-6" },
+          h('label', { className: "block text-sm font-semibold mb-2" }, "Venmo Username"),
+          h('input', { type: "text", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-4 border rounded-lg" }),
+          h('button', { onClick: () => onSave(venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold" }, "Save")
         )
       );
     }
@@ -766,317 +562,144 @@
     function HomeScreen({ user, onScan, onTrack, onSettings, onLogout, orders, fileRef, handleUpload }) {
       return h('div', { className: "flex flex-col h-full bg-gray-50" },
         h('div', { className: "bg-white p-6 shadow-sm" },
-          h('div', { className: "flex justify-between items-center mb-6" },
-            h('div', { className: "text-2xl font-bold text-gray-800" }, "Split"),
+          h('div', { className: "flex justify-between items-center mb-4" },
+            h('div', { className: "text-2xl font-bold" }, "Split"),
             h('div', { className: "flex gap-3" },
-              h('button', { onClick: onSettings, className: "text-gray-600" }, h(CreditCard, { size: 24 })),
-              h('button', { onClick: onLogout, className: "text-gray-600" }, h(LogOut, { size: 24 }))
+              h('button', { onClick: onSettings }, h(CreditCard, { size: 24 })),
+              h('button', { onClick: onLogout }, h(LogOut, { size: 24 }))
             )
           ),
-          h('div', { className: "text-gray-600" }, `Welcome back, ${user?.name || 'Guest'}!`),
-          user?.venmo_username && h('div', { className: "text-sm text-green-600 mt-1" }, `Venmo: @${user.venmo_username}`)
+          h('div', {}, `Welcome, ${user?.name || 'User'}!`),
+          user?.venmo_username && h('div', { className: "text-sm text-green-600" }, `@${user.venmo_username}`)
         ),
-        h('div', { className: "flex-1 p-6 overflow-auto" },
-          h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white mb-6 shadow-lg" },
-            h('div', { className: "text-xl font-semibold mb-4" }, "Scan a Receipt"),
-            h('div', { className: "text-sm mb-6 opacity-90" }, "Use AI to automatically split your bill"),
-            h('button', { 
-              onClick: onScan, 
-              className: "bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-gray-100 transition" 
-            },
-              h(Camera, { size: 20 }), "Take Photo / Upload"
+        h('div', { className: "p-6" },
+          h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white mb-6" },
+            h('div', { className: "text-xl font-semibold mb-4" }, "Scan Receipt"),
+            h('button', { onClick: onScan, className: "bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold flex items-center gap-2" },
+              h(Camera, { size: 20 }), "Take Photo"
             ),
-            h('input', { 
-              ref: fileRef, 
-              type: "file", 
-              accept: "image/*", 
-              capture: "environment", 
-              onChange: handleUpload, 
-              className: "hidden" 
-            })
+            h('input', { ref: fileRef, type: "file", accept: "image/*", capture: "environment", onChange: handleUpload, className: "hidden" })
           ),
-          h('div', { className: "grid grid-cols-2 gap-4 mb-6" },
-            h('button', { 
-              onClick: onTrack, 
-              className: "bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition" 
-            },
-              h(Clock, { className: "text-blue-600 mb-3", size: 32 }),
-              h('div', { className: "font-semibold text-gray-800" }, "Track Orders")
+          h('div', { className: "grid grid-cols-2 gap-4" },
+            h('button', { onClick: onTrack, className: "bg-white p-6 rounded-xl shadow-sm" },
+              h(Clock, { size: 32, className: "text-blue-600 mb-3" }),
+              h('div', { className: "font-semibold" }, "Orders")
             ),
-            h('button', { 
-              className: "bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition" 
-            },
-              h(Users, { className: "text-purple-600 mb-3", size: 32 }),
-              h('div', { className: "font-semibold text-gray-800" }, "Manual Split")
+            h('button', { className: "bg-white p-6 rounded-xl shadow-sm" },
+              h(Users, { size: 32, className: "text-purple-600 mb-3" }),
+              h('div', { className: "font-semibold" }, "Manual")
             )
-          ),
-          orders.length > 0 && h('div', {},
-            h('div', { className: "text-lg font-semibold text-gray-800 mb-3" }, "Recent Orders"),
-            orders.slice(0, 3).map(o => h('div', { 
-              key: o.id, 
-              className: "bg-white p-4 rounded-lg mb-3 shadow-sm" 
-            },
-              h('div', { className: "flex justify-between items-start" },
-                h('div', {}, 
-                  h('div', { className: "font-semibold text-gray-800" }, o.merchant || 'Restaurant'), 
-                  h('div', { className: "text-sm text-gray-600" }, new Date(o.date).toLocaleDateString())
-                ),
-                h('div', { className: "text-right" }, 
-                  h('div', { className: "font-bold text-gray-800" }, `$${o.total.toFixed(2)}`), 
-                  h('div', { className: "text-xs text-green-600" }, "Completed")
-                )
-              )
-            ))
           )
         )
       );
     }
 
     function ReviewScreen({ receipt, onBack, onStartSplit }) {
-      if (!receipt) {
-        return h('div', { className: "flex flex-col items-center justify-center h-full bg-white p-8 text-center" },
-          h('div', { className: "animate-pulse mb-6" }, h(Scan, { size: 80 })),
-          h('div', { className: "text-2xl font-bold text-gray-800 mb-4" }, "Processing Receipt..."),
-          h('button', { 
-            onClick: onBack, 
-            className: "bg-gray-200 text-gray-800 px-8 py-4 rounded-xl font-semibold hover:bg-gray-300 transition" 
-          }, "Cancel")
-        );
-      }
-
+      if (!receipt) return null;
       return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
-        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 sticky top-0 z-10 shadow-md" },
-          h('button', { onClick: onBack, className: "mb-4 text-white opacity-80 hover:opacity-100 transition" }, 
-            h(ArrowLeft, { size: 24 })
-          ),
-          h('div', { className: "text-2xl font-bold mb-1" }, receipt.merchant),
-          h('div', { className: "text-sm opacity-90" }, receipt.date)
+        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, receipt.merchant)
         ),
-        h('div', { className: "flex-1 p-6" },
-          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-6 shadow-sm" },
-            h('div', { className: "text-xl font-bold mb-4 text-gray-800" }, "Items"),
-            receipt.items?.length > 0 ? receipt.items.map((item, i) => h('div', { 
-              key: i, 
-              className: "flex justify-between items-center py-3 border-b border-gray-200 last:border-0" 
-            },
-              h('div', { className: "flex-1" },
-                h('div', { className: "font-medium text-gray-900" }, item.name),
-                h('div', { className: "text-sm text-gray-600" }, `Qty: ${item.quantity || 1}`)
-              ),
-              h('div', { className: "font-bold text-gray-900" }, `$${(item.price || 0).toFixed(2)}`)
-            )) : h('div', { className: "text-center py-10 text-gray-500 text-lg" }, "No items detected")
+        h('div', { className: "p-6" },
+          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-6" },
+            h('div', { className: "text-xl font-bold mb-4" }, "Items"),
+            receipt.items?.map((item, i) => h('div', { key: i, className: "flex justify-between py-3 border-b last:border-0" },
+              h('div', {}, h('div', { className: "font-medium" }, item.name)),
+              h('div', { className: "font-bold" }, `$${item.price.toFixed(2)}`)
+            ))
           ),
-          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-8 shadow-sm" },
-            h('div', { className: "space-y-3 text-base" },
-              h('div', { className: "flex justify-between py-2" }, 
-                h('span', { className: "text-gray-600" }, "Subtotal"), 
-                h('span', { className: "font-medium" }, `$${receipt.subtotal?.toFixed(2) || '0.00'}`)
-              ),
-              h('div', { className: "flex justify-between py-2" }, 
-                h('span', { className: "text-gray-600" }, "Tax"), 
-                h('span', { className: "font-medium" }, `$${receipt.tax?.toFixed(2) || '0.00'}`)
-              ),
-              h('div', { className: "flex justify-between py-2" }, 
-                h('span', { className: "text-gray-600" }, "Tip"), 
-                h('span', { className: "font-medium" }, `$${receipt.tip?.toFixed(2) || '0.00'}`)
-              ),
-              h('div', { className: "flex justify-between py-4 border-t-2 border-gray-300 mt-2 text-lg font-bold" },
-                h('span', { className: "text-gray-800" }, "Total"),
-                h('span', { className: "text-gray-800" }, `$${receipt.total?.toFixed(2) || '0.00'}`)
-              )
-            )
+          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-8" },
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Subtotal"), h('span', {}, `$${receipt.subtotal.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tax"), h('span', {}, `$${receipt.tax.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tip"), h('span', {}, `$${receipt.tip.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-4 border-t-2 mt-2 text-lg font-bold" }, h('span', {}, "Total"), h('span', {}, `$${receipt.total.toFixed(2)}`))
           ),
-          h('button', { 
-            onClick: onStartSplit,
-            className: "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 rounded-xl font-bold text-lg hover:opacity-90 transition shadow-lg flex items-center justify-center gap-2" 
-          }, 
-            h(Share, { size: 20 }), 
-            "Start Live Split"
-          )
+          h('button', { onClick: onStartSplit, className: "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 rounded-xl font-bold text-lg" }, "Start Live Split")
         )
       );
     }
 
     function LiveSplitScreen({ billRoom, billItems, user, onBack, onShare, onToggleItem, onFinalize }) {
       if (!billRoom) return null;
-
       const isHost = user.id === billRoom.host_user_id;
       const myTotal = billItems.reduce((sum, item) => {
         if (item.assigned_user_ids?.includes(user.id)) {
-          const itemTotal = item.price * item.quantity;
-          const share = itemTotal / item.assigned_user_ids.length;
-          return sum + share;
+          return sum + (item.price * item.quantity) / item.assigned_user_ids.length;
         }
         return sum;
       }, 0);
 
       return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
-        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6 sticky top-0 z-10 shadow-md" },
-          h('button', { onClick: onBack, className: "mb-4 text-white opacity-80 hover:opacity-100 transition" }, 
-            h(ArrowLeft, { size: 24 })
-          ),
-          h('div', { className: "flex justify-between items-center" },
-            h('div', {},
-              h('div', { className: "text-2xl font-bold mb-1" }, billRoom.merchant || "Live Split"),
-              h('div', { className: "text-sm opacity-90" }, `${billRoom.status === 'editing' ? 'Live' : 'Locked'}`)
-            ),
-            billRoom.status === 'editing' && h('div', { 
-              className: "bg-green-500 text-white px-3 py-1 rounded-full text-xs font-semibold pulse-green" 
-            }, "LIVE")
-          )
+        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, billRoom.merchant || "Live Split")
         ),
         h('div', { className: "p-6" },
-          isHost && billRoom.status === 'editing' && h('div', { 
-            className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" 
-          },
-            h('div', { className: "flex justify-between items-center" },
-              h('div', {},
-                h('div', { className: "font-semibold text-blue-800" }, "Share with Friends"),
-                h('div', { className: "text-sm text-blue-700" }, "Send link so they can join")
-              ),
-              h('button', { 
-                onClick: onShare,
-                className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2"
-              }, h(Share, { size: 18 }), "Share")
-            )
+          isHost && billRoom.status === 'editing' && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
+            h('button', { onClick: onShare, className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold" }, "Share Link")
           ),
           h('div', { className: "mb-6" },
-            h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
             billItems.map(item => {
-              const isAssignedToMe = item.assigned_user_ids?.includes(user.id);
-              const assignedCount = item.assigned_user_ids?.length || 0;
-              
+              const isAssigned = item.assigned_user_ids?.includes(user.id);
               return h('div', { 
                 key: item.id,
                 onClick: () => billRoom.status === 'editing' && onToggleItem(item.id, user.id),
-                className: `p-4 mb-3 rounded-xl border-2 cursor-pointer transition ${
-                  billRoom.status === 'editing' ? 'hover:border-blue-400' : 'cursor-not-allowed opacity-75'
-                } ${isAssignedToMe ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'}`
+                className: `p-4 mb-3 rounded-xl border-2 cursor-pointer ${isAssigned ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`
               },
-                h('div', { className: "flex justify-between items-start mb-2" },
-                  h('div', { className: "flex-1" },
-                    h('div', { className: "font-medium text-gray-900" }, item.name),
-                    h('div', { className: "text-sm text-gray-600" }, `Qty: ${item.quantity}`)
-                  ),
-                  h('div', { className: "text-right" },
-                    h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`),
-                    assignedCount > 0 && h('div', { className: "text-xs text-blue-600 mt-1" }, 
-                      `Split ${assignedCount} way${assignedCount > 1 ? 's' : ''}`
-                    )
-                  )
+                h('div', { className: "flex justify-between" },
+                  h('div', { className: "font-medium" }, item.name),
+                  h('div', { className: "font-bold" }, `$${(item.price * item.quantity).toFixed(2)}`)
                 )
               );
             })
           ),
-          h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-5 mb-6 sticky bottom-20 shadow-lg" },
-            h('div', { className: "flex justify-between items-center" },
-              h('div', { className: "text-lg font-semibold" }, "Your Current Total"),
-              h('div', { className: "text-3xl font-bold" }, `$${myTotal.toFixed(2)}`)
-            ),
-            h('div', { className: "text-sm opacity-90 mt-1" }, "Tax & tip will be added when finalized")
+          h('div', { className: "bg-green-500 text-white rounded-xl p-5 mb-6" },
+            h('div', { className: "text-lg font-semibold" }, "Your Total"),
+            h('div', { className: "text-3xl font-bold" }, `$${myTotal.toFixed(2)}`)
           ),
           isHost && billRoom.status === 'editing' && h('button', {
             onClick: onFinalize,
-            className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl shadow-lg hover:opacity-90 transition flex items-center justify-center gap-2"
-          }, h(Lock, { size: 24 }), "Lock & Calculate Final Amounts"),
-          !isHost && billRoom.status === 'editing' && h('div', { 
-            className: "bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-center" 
-          },
-            h('div', { className: "text-yellow-800" }, "Waiting for host to finalize...")
-          )
+            className: "w-full bg-orange-500 text-white py-5 rounded-xl font-bold text-xl"
+          }, "Finalize Bill")
         )
       );
     }
 
-    function PaymentSummaryScreen({ billRoom, billItems, reimbursements, user, receipt, onBack, onPay, onMarkPaid, onComplete }) {
+    function PaymentSummaryScreen({ billRoom, reimbursements, user, onBack, onPay, onMarkPaid, onComplete }) {
       if (!billRoom) return null;
-
       const isHost = user.id === billRoom.host_user_id;
       const myReimbursement = reimbursements.find(r => r.from_user_id === user.id);
 
       return h('div', { className: "flex flex-col h-full bg-gray-50 overflow-auto" },
-        h('div', { className: "p-6 border-b border-gray-200 bg-white sticky top-0 z-10" },
+        h('div', { className: "p-6 border-b bg-white" },
           h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-          h('div', { className: "text-2xl font-bold text-gray-800" }, 
-            isHost ? "Payment Overview" : "Your Payment"
-          )
+          h('div', { className: "text-2xl font-bold" }, isHost ? "Payment Overview" : "Your Payment")
         ),
         h('div', { className: "p-6" },
-          !isHost && myReimbursement && h('div', {},
-            h('div', { className: "bg-white rounded-2xl p-6 mb-6 shadow-lg" },
-              h('div', { className: "text-center mb-6" },
-                h('div', { className: "text-gray-600 mb-2" }, "You owe"),
-                h('div', { className: "text-5xl font-bold text-blue-600 mb-4" }, 
-                  `$${myReimbursement.amount.toFixed(2)}`
-                ),
-                h('div', { className: "text-gray-600" }, "to host")
-              ),
-              h('div', { className: "bg-gray-50 rounded-xl p-4 mb-6" },
-                h('div', { className: "text-sm font-semibold text-gray-700 mb-2" }, "Breakdown:"),
-                h('div', { className: "flex justify-between text-sm py-1" },
-                  h('span', { className: "text-gray-600" }, "Your items"),
-                  h('span', { className: "font-medium" }, 
-                    `$${myReimbursement.base_amount?.toFixed(2) || '0.00'}`
-                  )
-                ),
-                h('div', { className: "flex justify-between text-sm py-1" },
-                  h('span', { className: "text-gray-600" }, "Platform fee"),
-                  h('span', { className: "font-medium" }, 
-                    `$${myReimbursement.platform_fee?.toFixed(2) || '0.00'}`
-                  )
-                )
-              ),
-              myReimbursement.paid_status ? h('div', { 
-                className: "bg-green-50 border-2 border-green-200 rounded-xl p-4 flex items-center justify-center gap-2" 
-              },
-                h(CheckCircle, { className: "text-green-600", size: 24 }),
-                h('span', { className: "text-green-800 font-semibold" }, "Marked as Paid")
-              ) : h('button', {
-                onClick: () => {
-                  onPay(myReimbursement.amount, billRoom.host_user_id, receipt?.merchant || 'Restaurant');
-                  onMarkPaid(myReimbursement.id);
-                },
-                className: "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 rounded-xl font-bold text-xl shadow-lg hover:opacity-90 transition"
+          !isHost && myReimbursement && h('div', { className: "bg-white rounded-2xl p-6 mb-6" },
+            h('div', { className: "text-center mb-6" },
+              h('div', { className: "text-gray-600 mb-2" }, "You owe"),
+              h('div', { className: "text-5xl font-bold text-blue-600 mb-4" }, `$${myReimbursement.amount.toFixed(2)}`)
+            ),
+            myReimbursement.paid_status ? h('div', { className: "bg-green-50 p-4 rounded-xl text-green-800 text-center" }, "Marked as Paid")
+              : h('button', {
+                onClick: () => { onPay(myReimbursement.amount, billRoom.host_user_id, 'Restaurant'); onMarkPaid(myReimbursement.id); },
+                className: "w-full bg-blue-600 text-white py-5 rounded-xl font-bold text-xl"
               }, `Pay $${myReimbursement.amount.toFixed(2)} via Venmo`)
-            )
           ),
           isHost && h('div', {},
-            h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-2xl p-6 mb-6 shadow-lg" },
-              h('div', { className: "text-center" },
-                h('div', { className: "text-sm opacity-90 mb-1" }, "Total You'll Receive"),
-                h('div', { className: "text-4xl font-bold" }, 
-                  `$${reimbursements.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}`
-                )
-              )
+            h('div', { className: "bg-green-500 text-white rounded-2xl p-6 mb-6 text-center" },
+              h('div', { className: "text-4xl font-bold" }, `$${reimbursements.reduce((s, r) => s + r.amount, 0).toFixed(2)}`)
             ),
-            h('div', { className: "text-lg font-bold mb-4" }, "Payment Status"),
-            reimbursements.map((reimb, idx) => h('div', { 
-              key: idx, 
-              className: "bg-white rounded-xl p-5 mb-4 shadow"
-            },
-              h('div', { className: "flex justify-between items-center mb-3" },
-                h('div', {},
-                  h('div', { className: "font-bold text-lg" }, `Person ${idx + 1}`),
-                  h('div', { className: "text-sm text-gray-600" }, "owes you")
-                ),
-                h('div', { className: "text-right" },
-                  h('div', { className: "text-2xl font-bold text-blue-600" }, 
-                    `$${reimb.amount.toFixed(2)}`
-                  ),
-                  reimb.paid_status ? h('div', { 
-                    className: "text-xs text-green-600 font-semibold flex items-center gap-1 justify-end mt-1" 
-                  },
-                    h(CheckCircle, { size: 14 }),
-                    "Paid"
-                  ) : h('div', { className: "text-xs text-orange-600 font-semibold" }, "Pending")
-                )
+            reimbursements.map((r, i) => h('div', { key: i, className: "bg-white rounded-xl p-5 mb-4" },
+              h('div', { className: "flex justify-between" },
+                h('div', { className: "font-bold" }, `Person ${i + 1}`),
+                h('div', { className: "text-2xl font-bold text-blue-600" }, `$${r.amount.toFixed(2)}`)
               )
             ))
           ),
-          h('button', {
-            onClick: onComplete,
-            className: "w-full bg-gray-200 text-gray-800 py-4 rounded-xl font-semibold hover:bg-gray-300 transition mt-6"
-          }, "Back to Home")
+          h('button', { onClick: onComplete, className: "w-full bg-gray-200 py-4 rounded-xl font-semibold mt-6" }, "Done")
         )
       );
     }
@@ -1084,44 +707,23 @@
     function DoneScreen({ onHome }) {
       return h('div', { className: "flex flex-col items-center justify-center h-full bg-gradient-to-br from-green-400 to-blue-500 text-white p-6" },
         h(CheckCircle, { size: 120, className: "mb-8" }),
-        h('div', { className: "text-4xl font-bold mb-4" }, "Split Complete!"),
-        h('div', { className: "text-xl mb-12 text-center opacity-90" }, "All payments processed"),
-        h('button', { 
-          onClick: onHome,
-          className: "bg-white text-blue-600 px-10 py-4 rounded-full font-semibold text-lg hover:bg-gray-100 transition shadow-lg" 
-        }, "Back to Home")
+        h('div', { className: "text-4xl font-bold mb-4" }, "Complete!"),
+        h('button', { onClick: onHome, className: "bg-white text-blue-600 px-10 py-4 rounded-full font-semibold text-lg" }, "Home")
       );
     }
 
     function TrackScreen({ orders, onBack }) {
-      return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
-        h('div', { className: "p-6 border-b border-gray-200 sticky top-0 bg-white z-10 shadow-sm" },
+      return h('div', { className: "flex flex-col h-full bg-white" },
+        h('div', { className: "p-6 border-b" },
           h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-          h('div', { className: "text-2xl font-bold text-gray-800" }, "Your Orders")
+          h('div', { className: "text-2xl font-bold" }, "Your Orders")
         ),
-        h('div', { className: "flex-1 p-6" },
-          orders.length === 0 ? h('div', { className: "text-center py-20 text-gray-500" },
-            h(Clock, { size: 80, className: "mx-auto mb-6 opacity-60" }),
-            h('div', { className: "text-2xl font-semibold mb-2" }, "No Orders Yet"),
-            h('div', { className: "text-lg" }, "Completed orders will appear here")
-          ) : orders.map(o => h('div', { 
-            key: o.id, 
-            className: "bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm" 
-          },
-            h('div', { className: "flex justify-between items-start mb-4" },
-              h('div', {},
-                h('div', { className: "font-bold text-xl text-gray-800" }, o.merchant || 'Restaurant'),
-                h('div', { className: "text-sm text-gray-600" }, new Date(o.date).toLocaleString())
-              ),
-              h('div', { className: "bg-green-100 text-green-800 px-4 py-1 rounded-full text-sm font-semibold" }, 
-                "Completed"
-              )
-            ),
-            h('div', { className: "border-t border-gray-200 mt-4 pt-4 flex justify-between items-center text-lg" },
-              h('div', { className: "font-bold text-gray-800" }, "Total"),
-              h('div', { className: "text-xl font-bold text-blue-600" }, `$${o.total.toFixed(2)}`)
-            )
-          ))
+        h('div', { className: "p-6" },
+          orders.length === 0 ? h('div', { className: "text-center py-20 text-gray-500" }, "No orders yet")
+            : orders.map(o => h('div', { key: o.id, className: "bg-white border rounded-xl p-6 mb-6" },
+              h('div', { className: "font-bold text-xl" }, o.merchant),
+              h('div', { className: "text-2xl font-bold text-blue-600" }, `$${o.total.toFixed(2)}`)
+            ))
         )
       );
     }
