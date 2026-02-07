@@ -153,6 +153,10 @@
             if (pendingBillId) {
               await loadSharedBill(pendingBillId);
               setPendingBillId(null);
+            } else {
+              // CRITICAL FIX: Navigate to home screen
+              console.log('Navigating to home screen');
+              setScreen('home');
             }
           } else {
             console.log('⚠️ No profile found');
@@ -160,7 +164,6 @@
         } catch (err) {
           console.error('Profile load error:', err);
         } finally {
-          // CRITICAL: Always set loading to false
           console.log('Setting loading to false');
           setLoading(false);
         }
@@ -203,11 +206,14 @@
           if (pendingBillId) {
             await loadSharedBill(pendingBillId);
             setPendingBillId(null);
+          } else {
+            // CRITICAL FIX: Navigate to home screen after sign in
+            console.log('Navigating to home screen');
+            setScreen('home');
           }
         } catch (err) {
           console.error('Profile create error:', err);
         } finally {
-          // CRITICAL: Always set loading to false
           console.log('Setting loading to false');
           setLoading(false);
         }
