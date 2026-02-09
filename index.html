@@ -97,17 +97,20 @@
       const [billItems, setBillItems] = useState([]);
       const [reimbursements, setReimbursements] = useState([]);
       const [orders, setOrders] = useState([]);
-      const [pendingBillId, setPendingBillId] = useState(null);
       const fileRef = useRef(null);
+      
+      // CRITICAL FIX: Use ref to persist bill ID across renders
+      const pendingBillIdRef = useRef(null);
 
       useEffect(() => {
         console.log('🚀 App starting...');
         
+        // Check for shared bill in URL and store in ref
         const params = new URLSearchParams(window.location.search);
         const sharedBillId = params.get('bill');
         if (sharedBillId) {
-          console.log('📎 Shared bill:', sharedBillId);
-          setPendingBillId(sharedBillId);
+          console.log('📎 Shared bill detected:', sharedBillId);
+          pendingBillIdRef.current = sharedBillId;
         }
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
@@ -146,31 +149,26 @@
             .eq('id', userId)
             .single();
 
-          console.log('Query result:', { data, error });
-
-          if (error) {
-            console.error('❌ Profile load error:', error);
-            setLoading(false);
-            return;
-          }
+          if (error) throw error;
 
           if (data) {
             console.log('✅ User found:', data.name);
             setUser(data);
             
-            if (pendingBillId) {
-              console.log('Loading shared bill:', pendingBillId);
-              await loadSharedBill(pendingBillId);
-              setPendingBillId(null);
+            // Check ref for pending bill
+            if (pendingBillIdRef.current) {
+              console.log('🔗 Pending bill from ref:', pendingBillIdRef.current);
+              await loadSharedBill(pendingBillIdRef.current);
+              pendingBillIdRef.current = null;
             } else {
-              console.log('Navigating to home');
+              console.log('🏠 Navigating to home');
               setScreen('home');
             }
           }
         } catch (err) {
-          console.error('❌ Exception in loadUserProfile:', err);
+          console.error('💥 Profile load error:', err);
+          setScreen('home');
         } finally {
-          console.log('✅ Setting loading to false');
           setLoading(false);
         }
       };
@@ -185,20 +183,13 @@
             .eq('id', authUser.id)
             .single();
 
-          console.log('Existing user query:', { existingUser, fetchError });
-
-          if (fetchError && fetchError.code !== 'PGRST116') {
-            console.error('❌ Fetch error:', fetchError);
-            setLoading(false);
-            setScreen('home');
-            return;
-          }
+          console.log('📊 Existing user query:', { existingUser, fetchError });
 
           if (existingUser) {
             console.log('✅ User found:', existingUser.name);
             setUser(existingUser);
           } else {
-            console.log('➕ Creating profile...');
+            console.log('➕ Creating new profile...');
             const newUser = {
               id: authUser.id,
               email: authUser.email,
@@ -212,34 +203,33 @@
               .select()
               .single();
 
-            console.log('Insert result:', { createdUser, insertError });
-
-            if (insertError) {
-              console.error('❌ Insert error:', insertError);
-            } else if (createdUser) {
+            if (createdUser) {
               console.log('✅ Profile created:', createdUser.name);
               setUser(createdUser);
+            } else {
+              console.error('❌ Insert failed:', insertError);
             }
           }
           
-          if (pendingBillId) {
-            console.log('Loading shared bill:', pendingBillId);
-            await loadSharedBill(pendingBillId);
-            setPendingBillId(null);
+          // Check ref for pending bill
+          if (pendingBillIdRef.current) {
+            console.log('🔗 Pending bill from ref:', pendingBillIdRef.current);
+            await loadSharedBill(pendingBillIdRef.current);
+            pendingBillIdRef.current = null;
           } else {
-            console.log('Navigating to home');
+            console.log('🏠 Navigating to home');
             setScreen('home');
           }
         } catch (err) {
-          console.error('❌ Exception in loadOrCreateUserProfile:', err);
+          console.error('💥 Profile error:', err);
+          setScreen('home');
         } finally {
-          console.log('✅ Setting loading to false');
           setLoading(false);
         }
       };
 
       const loadSharedBill = async (id) => {
-        console.log('🔗 Loading shared bill:', id);
+        console.log('🔄 Loading shared bill:', id);
         
         try {
           const { data: bill, error } = await supabaseClient
@@ -248,55 +238,56 @@
             .eq('id', id)
             .single();
 
-          console.log('Bill query result:', { bill, error });
+          console.log('📊 Bill query result:', { bill, error });
 
-          if (error) {
-            console.error('❌ Bill load error:', error);
-            alert('Could not load bill. It may have been deleted.');
-            setScreen('home');
-            return;
-          }
+          if (error) throw error;
 
           if (bill) {
-            console.log('✅ Bill loaded:', bill.merchant);
+            console.log('✅ Bill found:', bill.merchant);
             setBillId(id);
             setBillRoom(bill);
             await loadBillItems(id);
             subscribeToRealtime(id);
-            console.log('Navigating to live-split');
+            console.log('🎬 Setting screen to live-split');
             setScreen('live-split');
           } else {
             console.log('⚠️ Bill not found');
-            alert('Bill not found');
+            alert('Bill not found!');
             setScreen('home');
           }
         } catch (err) {
-          console.error('❌ Exception in loadSharedBill:', err);
-          alert('Error loading bill');
+          console.error('💥 Load shared bill error:', err);
+          alert('Failed to load bill');
           setScreen('home');
         }
       };
 
       const loadBillItems = async (billRoomId) => {
-        console.log('Loading bill items for:', billRoomId);
-        const { data, error } = await supabaseClient
-          .from('bill_items')
-          .select('*')
-          .eq('bill_room_id', billRoomId);
+        console.log('📋 Loading items for bill:', billRoomId);
+        
+        try {
+          const { data, error } = await supabaseClient
+            .from('bill_items')
+            .select('*')
+            .eq('bill_room_id', billRoomId);
 
-        console.log('Items loaded:', { count: data?.length, error });
-        if (data) setBillItems(data);
+          if (data) {
+            setBillItems(data);
+            console.log('✅ Items loaded:', data.length);
+          }
+        } catch (err) {
+          console.error('💥 Load items error:', err);
+        }
       };
 
       const subscribeToRealtime = (billRoomId) => {
-        console.log('Subscribing to realtime for:', billRoomId);
+        console.log('🔌 Setting up realtime for:', billRoomId);
         
         const roomChannel = supabaseClient
           .channel(`bill_room_${billRoomId}`)
           .on('postgres_changes', 
             { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
             (payload) => {
-              console.log('Room updated:', payload);
               if (payload.eventType === 'UPDATE') setBillRoom(payload.new);
             }
           )
@@ -306,10 +297,7 @@
           .channel(`bill_items_${billRoomId}`)
           .on('postgres_changes',
             { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
-            (payload) => {
-              console.log('Items updated:', payload);
-              loadBillItems(billRoomId);
-            }
+            () => loadBillItems(billRoomId)
           )
           .subscribe();
       };
