@@ -33,7 +33,7 @@
       return Math.min(fee, 1.99);
     };
 
-    // Icons
+    // Icons (keeping all the same)
     const Camera = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('path', { d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" }),
       h('circle', { cx: "12", cy: "13", r: "4" })
@@ -95,28 +95,21 @@
       const [billId, setBillId] = useState(null);
       const [billRoom, setBillRoom] = useState(null);
       const [billItems, setBillItems] = useState([]);
-      const [reimbursements, setReimbursements] = useState([]);
+      const [myFinalized, setMyFinalized] = useState(false);
+      const [myTotal, setMyTotal] = useState(0);
       const [orders, setOrders] = useState([]);
       const fileRef = useRef(null);
-      
-      // CRITICAL FIX: Use ref to persist bill ID across renders
       const pendingBillIdRef = useRef(null);
 
       useEffect(() => {
-        console.log('🚀 App starting...');
-        
-        // Check for shared bill in URL and store in ref
         const params = new URLSearchParams(window.location.search);
         const sharedBillId = params.get('bill');
         if (sharedBillId) {
-          console.log('📎 Shared bill detected:', sharedBillId);
           pendingBillIdRef.current = sharedBillId;
         }
 
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
-          console.log('Initial session:', session ? 'Found' : 'None');
           setSession(session);
-          
           if (session) {
             loadUserProfile(session.user.id);
           } else {
@@ -125,9 +118,7 @@
         });
 
         const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
-          console.log('🔐 Auth event:', event);
           setSession(session);
-          
           if (session && event === 'SIGNED_IN') {
             await loadOrCreateUserProfile(session.user);
           } else if (!session) {
@@ -140,33 +131,18 @@
       }, []);
 
       const loadUserProfile = async (userId) => {
-        console.log('📥 Loading profile:', userId);
-        
         try {
-          const { data, error } = await supabaseClient
-            .from('users')
-            .select('*')
-            .eq('id', userId)
-            .single();
-
-          if (error) throw error;
-
+          const { data } = await supabaseClient.from('users').select('*').eq('id', userId).single();
           if (data) {
-            console.log('✅ User found:', data.name);
             setUser(data);
-            
-            // Check ref for pending bill
             if (pendingBillIdRef.current) {
-              console.log('🔗 Pending bill from ref:', pendingBillIdRef.current);
               await loadSharedBill(pendingBillIdRef.current);
               pendingBillIdRef.current = null;
             } else {
-              console.log('🏠 Navigating to home');
               setScreen('home');
             }
           }
         } catch (err) {
-          console.error('💥 Profile load error:', err);
           setScreen('home');
         } finally {
           setLoading(false);
@@ -174,54 +150,29 @@
       };
 
       const loadOrCreateUserProfile = async (authUser) => {
-        console.log('🔍 Load/create profile:', authUser.id);
-        
         try {
-          const { data: existingUser, error: fetchError } = await supabaseClient
-            .from('users')
-            .select('*')
-            .eq('id', authUser.id)
-            .single();
-
-          console.log('📊 Existing user query:', { existingUser, fetchError });
-
+          const { data: existingUser } = await supabaseClient.from('users').select('*').eq('id', authUser.id).single();
+          
           if (existingUser) {
-            console.log('✅ User found:', existingUser.name);
             setUser(existingUser);
           } else {
-            console.log('➕ Creating new profile...');
             const newUser = {
               id: authUser.id,
               email: authUser.email,
               name: authUser.user_metadata?.name || '',
               venmo_username: authUser.user_metadata?.venmo_username || ''
             };
-
-            const { data: createdUser, error: insertError } = await supabaseClient
-              .from('users')
-              .insert(newUser)
-              .select()
-              .single();
-
-            if (createdUser) {
-              console.log('✅ Profile created:', createdUser.name);
-              setUser(createdUser);
-            } else {
-              console.error('❌ Insert failed:', insertError);
-            }
+            const { data: createdUser } = await supabaseClient.from('users').insert(newUser).select().single();
+            if (createdUser) setUser(createdUser);
           }
           
-          // Check ref for pending bill
           if (pendingBillIdRef.current) {
-            console.log('🔗 Pending bill from ref:', pendingBillIdRef.current);
             await loadSharedBill(pendingBillIdRef.current);
             pendingBillIdRef.current = null;
           } else {
-            console.log('🏠 Navigating to home');
             setScreen('home');
           }
         } catch (err) {
-          console.error('💥 Profile error:', err);
           setScreen('home');
         } finally {
           setLoading(false);
@@ -229,76 +180,38 @@
       };
 
       const loadSharedBill = async (id) => {
-        console.log('🔄 Loading shared bill:', id);
-        
         try {
-          const { data: bill, error } = await supabaseClient
-            .from('bill_rooms')
-            .select('*')
-            .eq('id', id)
-            .single();
-
-          console.log('📊 Bill query result:', { bill, error });
-
-          if (error) throw error;
-
+          const { data: bill } = await supabaseClient.from('bill_rooms').select('*').eq('id', id).single();
           if (bill) {
-            console.log('✅ Bill found:', bill.merchant);
             setBillId(id);
             setBillRoom(bill);
             await loadBillItems(id);
             subscribeToRealtime(id);
-            console.log('🎬 Setting screen to live-split');
             setScreen('live-split');
           } else {
-            console.log('⚠️ Bill not found');
             alert('Bill not found!');
             setScreen('home');
           }
         } catch (err) {
-          console.error('💥 Load shared bill error:', err);
           alert('Failed to load bill');
           setScreen('home');
         }
       };
 
       const loadBillItems = async (billRoomId) => {
-        console.log('📋 Loading items for bill:', billRoomId);
-        
-        try {
-          const { data, error } = await supabaseClient
-            .from('bill_items')
-            .select('*')
-            .eq('bill_room_id', billRoomId);
-
-          if (data) {
-            setBillItems(data);
-            console.log('✅ Items loaded:', data.length);
-          }
-        } catch (err) {
-          console.error('💥 Load items error:', err);
-        }
+        const { data } = await supabaseClient.from('bill_items').select('*').eq('bill_room_id', billRoomId);
+        if (data) setBillItems(data);
       };
 
       const subscribeToRealtime = (billRoomId) => {
-        console.log('🔌 Setting up realtime for:', billRoomId);
-        
-        const roomChannel = supabaseClient
-          .channel(`bill_room_${billRoomId}`)
-          .on('postgres_changes', 
-            { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
-            (payload) => {
-              if (payload.eventType === 'UPDATE') setBillRoom(payload.new);
-            }
-          )
+        supabaseClient.channel(`bill_room_${billRoomId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
+            (payload) => { if (payload.eventType === 'UPDATE') setBillRoom(payload.new); })
           .subscribe();
 
-        const itemsChannel = supabaseClient
-          .channel(`bill_items_${billRoomId}`)
-          .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
-            () => loadBillItems(billRoomId)
-          )
+        supabaseClient.channel(`bill_items_${billRoomId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
+            () => loadBillItems(billRoomId))
           .subscribe();
       };
 
@@ -312,7 +225,6 @@
           }
 
           setScanning(true);
-          
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 30000);
           
@@ -324,11 +236,9 @@
           });
 
           clearTimeout(timeoutId);
-
           if (!response.ok) throw new Error('Scan failed');
 
           const parsed = await response.json();
-
           const newReceipt = {
             merchant: parsed.merchant || 'Unknown',
             date: parsed.date || new Date().toLocaleDateString(),
@@ -342,9 +252,7 @@
           setReceipt(newReceipt);
           await createBillRoom(newReceipt);
           setScreen("review");
-          
         } catch (err) {
-          console.error('Scan error:', err);
           alert(`Scan failed: ${err.message}`);
         } finally {
           setScanning(false);
@@ -352,18 +260,14 @@
       };
 
       const createBillRoom = async (receiptData) => {
-        const { data: room } = await supabaseClient
-          .from('bill_rooms')
-          .insert({
-            host_user_id: user.id,
-            status: 'editing',
-            tax: receiptData.tax,
-            tip_percent: 20,
-            merchant: receiptData.merchant,
-            total: receiptData.total
-          })
-          .select()
-          .single();
+        const { data: room } = await supabaseClient.from('bill_rooms').insert({
+          host_user_id: user.id,
+          status: 'editing',
+          tax: receiptData.tax,
+          tip_percent: 20,
+          merchant: receiptData.merchant,
+          total: receiptData.total
+        }).select().single();
 
         if (room) {
           setBillId(room.id);
@@ -377,11 +281,7 @@
             assigned_user_ids: []
           }));
 
-          const { data: items } = await supabaseClient
-            .from('bill_items')
-            .insert(itemsToInsert)
-            .select();
-
+          const { data: items } = await supabaseClient.from('bill_items').insert(itemsToInsert).select();
           if (items) setBillItems(items);
           subscribeToRealtime(room.id);
         }
@@ -418,83 +318,55 @@
         }
       };
 
-      const toggleItemAssignment = async (itemId, userId) => {
+      // NEW: Exclusive item selection - only 1 person can claim an item
+      const toggleItemAssignment = async (itemId) => {
         const item = billItems.find(i => i.id === itemId);
-        if (!item || billRoom.status !== 'editing') return;
+        if (!item) return;
 
         const assignedIds = item.assigned_user_ids || [];
-        const newAssignedIds = assignedIds.includes(userId)
-          ? assignedIds.filter(id => id !== userId)
-          : [...assignedIds, userId];
-
-        await supabaseClient
-          .from('bill_items')
-          .update({ assigned_user_ids: newAssignedIds })
-          .eq('id', itemId);
+        
+        // If item is assigned to me, unassign it
+        if (assignedIds.includes(user.id)) {
+          await supabaseClient.from('bill_items').update({ assigned_user_ids: [] }).eq('id', itemId);
+        } 
+        // If item is unassigned, assign to me
+        else if (assignedIds.length === 0) {
+          await supabaseClient.from('bill_items').update({ assigned_user_ids: [user.id] }).eq('id', itemId);
+        }
+        // If assigned to someone else, do nothing (can't steal)
       };
 
-      const finalizeBill = async () => {
-        if (!user.venmo_username) {
-          alert('Set Venmo username in Settings first!');
-          setScreen('settings');
+      // NEW: Each person finalizes their own total
+      const finalizeMyTotal = () => {
+        const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
+        const mySubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        const taxRate = billRoom.tax / receipt.subtotal;
+        const myTax = mySubtotal * taxRate;
+        const myTip = (mySubtotal + myTax) * (billRoom.tip_percent / 100);
+        const baseAmount = mySubtotal + myTax + myTip;
+        const platformFee = calculatePlatformFee(baseAmount);
+        const total = baseAmount + platformFee;
+
+        setMyTotal(total);
+        setMyFinalized(true);
+      };
+
+      // NEW: Pay host via Venmo
+      const payHost = async () => {
+        if (!billRoom || !user) return;
+
+        // Get host user info
+        const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
+        
+        if (!hostUser?.venmo_username) {
+          alert('Host has not set up Venmo yet!');
           return;
         }
 
-        await supabaseClient.from('bill_rooms').update({ status: 'finalized' }).eq('id', billId);
-
-        const participantIds = new Set();
-        billItems.forEach(item => item.assigned_user_ids?.forEach(uid => participantIds.add(uid)));
-
-        const personSubtotals = {};
-        Array.from(participantIds).forEach(uid => { personSubtotals[uid] = 0; });
-
-        billItems.forEach(item => {
-          const assigned = item.assigned_user_ids || [];
-          if (assigned.length > 0) {
-            const sharePerPerson = (item.price * item.quantity) / assigned.length;
-            assigned.forEach(uid => { personSubtotals[uid] += sharePerPerson; });
-          }
-        });
-
-        const totalSubtotal = Object.values(personSubtotals).reduce((a, b) => a + b, 0);
-        const taxRate = totalSubtotal > 0 ? billRoom.tax / totalSubtotal : 0;
-        const tipRate = billRoom.tip_percent / 100;
-
-        const reimbursementsToInsert = [];
-        for (const [uid, subtotal] of Object.entries(personSubtotals)) {
-          if (uid !== user.id && subtotal > 0) {
-            const personTax = subtotal * taxRate;
-            const personTip = (subtotal + personTax) * tipRate;
-            const baseAmount = subtotal + personTax + personTip;
-            const platformFee = calculatePlatformFee(baseAmount);
-
-            reimbursementsToInsert.push({
-              bill_room_id: billId,
-              from_user_id: uid,
-              to_user_id: user.id,
-              amount: baseAmount + platformFee,
-              base_amount: baseAmount,
-              platform_fee: platformFee,
-              paid_status: false
-            });
-          }
-        }
-
-        if (reimbursementsToInsert.length > 0) {
-          const { data } = await supabaseClient.from('reimbursements').insert(reimbursementsToInsert).select();
-          if (data) setReimbursements(data);
-        }
-
-        setScreen('payment-summary');
-      };
-
-      const markAsPaid = async (id) => {
-        await supabaseClient.from('reimbursements').update({ paid_status: true }).eq('id', id);
-        setReimbursements(reimbursements.map(r => r.id === id ? { ...r, paid_status: true } : r));
-      };
-
-      const openVenmoPayment = (amount, hostVenmo, merchant) => {
-        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostVenmo}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(`Split - ${merchant}`)}`;
+        // Open Venmo deep link
+        const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
+        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
         window.open(venmoUrl, '_blank');
       };
 
@@ -505,8 +377,7 @@
 
       const signUpWithPassword = async (email, password, name, venmo) => {
         const { error } = await supabaseClient.auth.signUp({
-          email,
-          password,
+          email, password,
           options: { data: { name, venmo_username: venmo } }
         });
         if (error) alert(error.message);
@@ -547,10 +418,15 @@
       if (screen === 'signup') return h(SignUp, { onSignUp: signUpWithPassword, onSwitch: () => setScreen('signin') });
       if (screen === 'settings') return h(Settings, { user, onSave: (v) => { updateVenmo(v); setScreen('home'); }, onBack: () => setScreen('home') });
       if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
-      if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => user.venmo_username ? setScreen('live-split') : (alert('Set Venmo in Settings!'), setScreen('settings')) });
-      if (screen === 'live-split') return h(LiveSplitScreen, { billRoom, billItems, user, onBack: () => setScreen('home'), onShare: shareBill, onToggleItem: toggleItemAssignment, onFinalize: finalizeBill });
-      if (screen === 'payment-summary') return h(PaymentSummaryScreen, { billRoom, billItems, reimbursements, user, receipt, onBack: () => setScreen('home'), onPay: openVenmoPayment, onMarkPaid: markAsPaid, onComplete: () => setScreen('done') });
-      if (screen === 'done') return h(DoneScreen, { onHome: () => { setReceipt(null); setImage(null); setBillId(null); setBillRoom(null); setBillItems([]); setReimbursements([]); setScreen('home'); } });
+      if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
+      if (screen === 'live-split') return h(LiveSplitScreen, { 
+        billRoom, billItems, user, myFinalized, myTotal,
+        onBack: () => setScreen('home'), 
+        onShare: shareBill, 
+        onToggleItem: toggleItemAssignment, 
+        onFinalize: finalizeMyTotal,
+        onPay: payHost
+      });
       if (screen === 'track') return h(TrackScreen, { orders, onBack: () => setScreen('home') });
 
       return h('div', { className: "flex items-center justify-center h-full bg-red-50" },
@@ -558,10 +434,10 @@
       );
     }
 
+    // Components (Sign In, Sign Up, Settings, HomeScreen, ReviewScreen same as before)
     function SignIn({ onSignIn, onSwitch }) {
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
-      
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
         h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign In"),
         h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
@@ -576,7 +452,6 @@
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
       const [venmo, setVenmo] = useState('');
-      
       return h('div', { className: "flex flex-col h-full bg-white p-6" },
         h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign Up"),
         h('input', { type: "text", placeholder: "Full Name", value: name, onChange: (e) => setName(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
@@ -623,16 +498,6 @@
               h(Camera, { size: 20 }), "Take Photo"
             ),
             h('input', { ref: fileRef, type: "file", accept: "image/*", capture: "environment", onChange: handleUpload, className: "hidden" })
-          ),
-          h('div', { className: "grid grid-cols-2 gap-4" },
-            h('button', { onClick: onTrack, className: "bg-white p-6 rounded-xl shadow-sm" },
-              h(Clock, { size: 32, className: "text-blue-600 mb-3" }),
-              h('div', { className: "font-semibold" }, "Orders")
-            ),
-            h('button', { className: "bg-white p-6 rounded-xl shadow-sm" },
-              h(Users, { size: 32, className: "text-purple-600 mb-3" }),
-              h('div', { className: "font-semibold" }, "Manual")
-            )
           )
         )
       );
@@ -649,7 +514,7 @@
           h('div', { className: "bg-gray-50 rounded-xl p-5 mb-6" },
             h('div', { className: "text-xl font-bold mb-4" }, "Items"),
             receipt.items?.map((item, i) => h('div', { key: i, className: "flex justify-between py-3 border-b last:border-0" },
-              h('div', {}, h('div', { className: "font-medium" }, item.name)),
+              h('div', { className: "font-medium" }, item.name),
               h('div', { className: "font-bold" }, `$${item.price.toFixed(2)}`)
             ))
           ),
@@ -664,15 +529,15 @@
       );
     }
 
-    function LiveSplitScreen({ billRoom, billItems, user, onBack, onShare, onToggleItem, onFinalize }) {
+    // NEW LiveSplitScreen with exclusive selection + individual finalization
+    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, onBack, onShare, onToggleItem, onFinalize, onPay }) {
       if (!billRoom) return null;
+      
       const isHost = user.id === billRoom.host_user_id;
-      const myTotal = billItems.reduce((sum, item) => {
-        if (item.assigned_user_ids?.includes(user.id)) {
-          return sum + (item.price * item.quantity) / item.assigned_user_ids.length;
-        }
-        return sum;
-      }, 0);
+      
+      // Calculate current total (before finalization)
+      const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
+      const currentSubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
       return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
         h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
@@ -680,79 +545,77 @@
           h('div', { className: "text-2xl font-bold" }, billRoom.merchant || "Live Split")
         ),
         h('div', { className: "p-6" },
-          isHost && billRoom.status === 'editing' && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
-            h('button', { onClick: onShare, className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold" }, "Share Link")
+          // Share button (only for host)
+          isHost && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
+            h('div', { className: "flex justify-between items-center" },
+              h('div', { className: "font-semibold text-blue-800" }, "Share with Friends"),
+              h('button', { onClick: onShare, className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold" }, "Share Link")
+            )
           ),
+          
+          // Items selection
           h('div', { className: "mb-6" },
+            h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
             billItems.map(item => {
-              const isAssigned = item.assigned_user_ids?.includes(user.id);
+              const isAssignedToMe = item.assigned_user_ids?.includes(user.id);
+              const isAssignedToSomeone = item.assigned_user_ids?.length > 0;
+              const canSelect = !isAssignedToSomeone || isAssignedToMe;
+              
               return h('div', { 
                 key: item.id,
-                onClick: () => billRoom.status === 'editing' && onToggleItem(item.id, user.id),
-                className: `p-4 mb-3 rounded-xl border-2 cursor-pointer ${isAssigned ? 'border-blue-600 bg-blue-50' : 'border-gray-200'}`
+                onClick: () => !myFinalized && canSelect && onToggleItem(item.id),
+                className: `p-4 mb-3 rounded-xl border-2 transition ${
+                  myFinalized ? 'cursor-not-allowed opacity-50' : 
+                  !canSelect ? 'cursor-not-allowed border-gray-300 bg-gray-50' :
+                  isAssignedToMe ? 'border-blue-600 bg-blue-50 cursor-pointer' : 
+                  'border-gray-200 cursor-pointer hover:border-blue-300'
+                }`
               },
-                h('div', { className: "flex justify-between" },
-                  h('div', { className: "font-medium" }, item.name),
-                  h('div', { className: "font-bold" }, `$${(item.price * item.quantity).toFixed(2)}`)
+                h('div', { className: "flex justify-between items-center" },
+                  h('div', { className: "flex-1" },
+                    h('div', { className: "font-medium text-gray-900" }, item.name),
+                    isAssignedToSomeone && !isAssignedToMe && h('div', { className: "text-xs text-gray-500 mt-1" }, "Claimed by someone else")
+                  ),
+                  h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`)
                 )
               );
             })
           ),
-          h('div', { className: "bg-green-500 text-white rounded-xl p-5 mb-6" },
-            h('div', { className: "text-lg font-semibold" }, "Your Total"),
-            h('div', { className: "text-3xl font-bold" }, `$${myTotal.toFixed(2)}`)
+          
+          // Current total display
+          !myFinalized && h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-5 mb-6" },
+            h('div', { className: "flex justify-between items-center" },
+              h('div', { className: "text-lg font-semibold" }, "Your Current Subtotal"),
+              h('div', { className: "text-3xl font-bold" }, `$${currentSubtotal.toFixed(2)}`)
+            ),
+            h('div', { className: "text-sm opacity-90 mt-2" }, "Tax, tip & fees will be added")
           ),
-          isHost && billRoom.status === 'editing' && h('button', {
+          
+          // Finalize button
+          !myFinalized && myItems.length > 0 && h('button', {
             onClick: onFinalize,
-            className: "w-full bg-orange-500 text-white py-5 rounded-xl font-bold text-xl"
-          }, "Finalize Bill")
-        )
-      );
-    }
-
-    function PaymentSummaryScreen({ billRoom, reimbursements, user, onBack, onPay, onMarkPaid, onComplete }) {
-      if (!billRoom) return null;
-      const isHost = user.id === billRoom.host_user_id;
-      const myReimbursement = reimbursements.find(r => r.from_user_id === user.id);
-
-      return h('div', { className: "flex flex-col h-full bg-gray-50 overflow-auto" },
-        h('div', { className: "p-6 border-b bg-white" },
-          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-          h('div', { className: "text-2xl font-bold" }, isHost ? "Payment Overview" : "Your Payment")
-        ),
-        h('div', { className: "p-6" },
-          !isHost && myReimbursement && h('div', { className: "bg-white rounded-2xl p-6 mb-6" },
-            h('div', { className: "text-center mb-6" },
-              h('div', { className: "text-gray-600 mb-2" }, "You owe"),
-              h('div', { className: "text-5xl font-bold text-blue-600 mb-4" }, `$${myReimbursement.amount.toFixed(2)}`)
-            ),
-            myReimbursement.paid_status ? h('div', { className: "bg-green-50 p-4 rounded-xl text-green-800 text-center" }, "Marked as Paid")
-              : h('button', {
-                onClick: () => { onPay(myReimbursement.amount, billRoom.host_user_id, 'Restaurant'); onMarkPaid(myReimbursement.id); },
-                className: "w-full bg-blue-600 text-white py-5 rounded-xl font-bold text-xl"
-              }, `Pay $${myReimbursement.amount.toFixed(2)} via Venmo`)
-          ),
-          isHost && h('div', {},
-            h('div', { className: "bg-green-500 text-white rounded-2xl p-6 mb-6 text-center" },
-              h('div', { className: "text-4xl font-bold" }, `$${reimbursements.reduce((s, r) => s + r.amount, 0).toFixed(2)}`)
-            ),
-            reimbursements.map((r, i) => h('div', { key: i, className: "bg-white rounded-xl p-5 mb-4" },
-              h('div', { className: "flex justify-between" },
-                h('div', { className: "font-bold" }, `Person ${i + 1}`),
-                h('div', { className: "text-2xl font-bold text-blue-600" }, `$${r.amount.toFixed(2)}`)
+            className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl mb-6"
+          }, "Finalize My Total"),
+          
+          // Finalized total + Pay button
+          myFinalized && h('div', {},
+            h('div', { className: "bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl p-6 mb-6" },
+              h('div', { className: "text-center" },
+                h('div', { className: "text-sm opacity-90 mb-2" }, "Your Total (with tax, tip & fees)"),
+                h('div', { className: "text-5xl font-bold mb-4" }, `$${myTotal.toFixed(2)}`),
+                !isHost && h('button', {
+                  onClick: onPay,
+                  className: "w-full bg-white text-purple-600 py-4 rounded-xl font-bold text-xl hover:bg-gray-100 transition"
+                }, "Pay Now via Venmo")
               )
-            ))
-          ),
-          h('button', { onClick: onComplete, className: "w-full bg-gray-200 py-4 rounded-xl font-semibold mt-6" }, "Done")
+            ),
+            h('div', { className: "text-center text-sm text-gray-600" }, 
+              myItems.length > 0 
+                ? `You selected ${myItems.length} item${myItems.length > 1 ? 's' : ''}`
+                : "You haven't selected any items"
+            )
+          )
         )
-      );
-    }
-
-    function DoneScreen({ onHome }) {
-      return h('div', { className: "flex flex-col items-center justify-center h-full bg-gradient-to-br from-green-400 to-blue-500 text-white p-6" },
-        h(CheckCircle, { size: 120, className: "mb-8" }),
-        h('div', { className: "text-4xl font-bold mb-4" }, "Complete!"),
-        h('button', { onClick: onHome, className: "bg-white text-blue-600 px-10 py-4 rounded-full font-semibold text-lg" }, "Home")
       );
     }
 
@@ -763,11 +626,7 @@
           h('div', { className: "text-2xl font-bold" }, "Your Orders")
         ),
         h('div', { className: "p-6" },
-          orders.length === 0 ? h('div', { className: "text-center py-20 text-gray-500" }, "No orders yet")
-            : orders.map(o => h('div', { key: o.id, className: "bg-white border rounded-xl p-6 mb-6" },
-              h('div', { className: "font-bold text-xl" }, o.merchant),
-              h('div', { className: "text-2xl font-bold text-blue-600" }, `$${o.total.toFixed(2)}`)
-            ))
+          h('div', { className: "text-center py-20 text-gray-500" }, "No orders yet")
         )
       );
     }
