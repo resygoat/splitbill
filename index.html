@@ -33,7 +33,7 @@
       return Math.min(fee, 1.99);
     };
 
-    // Icons (keeping all the same)
+    // Icons
     const Camera = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
       h('path', { d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" }),
       h('circle', { cx: "12", cy: "13", r: "4" })
@@ -318,25 +318,36 @@
         }
       };
 
-      // NEW: Exclusive item selection - only 1 person can claim an item
+      // FIXED: Immediate local state update
       const toggleItemAssignment = async (itemId) => {
         const item = billItems.find(i => i.id === itemId);
         if (!item) return;
 
         const assignedIds = item.assigned_user_ids || [];
+        let newAssignedIds;
         
         // If item is assigned to me, unassign it
         if (assignedIds.includes(user.id)) {
-          await supabaseClient.from('bill_items').update({ assigned_user_ids: [] }).eq('id', itemId);
+          newAssignedIds = [];
         } 
         // If item is unassigned, assign to me
         else if (assignedIds.length === 0) {
-          await supabaseClient.from('bill_items').update({ assigned_user_ids: [user.id] }).eq('id', itemId);
+          newAssignedIds = [user.id];
         }
-        // If assigned to someone else, do nothing (can't steal)
+        // If assigned to someone else, do nothing
+        else {
+          return;
+        }
+
+        // CRITICAL FIX: Update local state IMMEDIATELY for instant UI feedback
+        setBillItems(billItems.map(i => 
+          i.id === itemId ? { ...i, assigned_user_ids: newAssignedIds } : i
+        ));
+
+        // Then update database (realtime will sync to others)
+        await supabaseClient.from('bill_items').update({ assigned_user_ids: newAssignedIds }).eq('id', itemId);
       };
 
-      // NEW: Each person finalizes their own total
       const finalizeMyTotal = () => {
         const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
         const mySubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -352,11 +363,9 @@
         setMyFinalized(true);
       };
 
-      // NEW: Pay host via Venmo
       const payHost = async () => {
         if (!billRoom || !user) return;
 
-        // Get host user info
         const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
         
         if (!hostUser?.venmo_username) {
@@ -364,7 +373,6 @@
           return;
         }
 
-        // Open Venmo deep link
         const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
         const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
         window.open(venmoUrl, '_blank');
@@ -420,7 +428,7 @@
       if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
       if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
       if (screen === 'live-split') return h(LiveSplitScreen, { 
-        billRoom, billItems, user, myFinalized, myTotal,
+        billRoom, billItems, user, myFinalized, myTotal, receipt,
         onBack: () => setScreen('home'), 
         onShare: shareBill, 
         onToggleItem: toggleItemAssignment, 
@@ -434,7 +442,6 @@
       );
     }
 
-    // Components (Sign In, Sign Up, Settings, HomeScreen, ReviewScreen same as before)
     function SignIn({ onSignIn, onSwitch }) {
       const [email, setEmail] = useState('');
       const [password, setPassword] = useState('');
@@ -529,13 +536,10 @@
       );
     }
 
-    // NEW LiveSplitScreen with exclusive selection + individual finalization
-    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, onBack, onShare, onToggleItem, onFinalize, onPay }) {
+    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, receipt, onBack, onShare, onToggleItem, onFinalize, onPay }) {
       if (!billRoom) return null;
       
       const isHost = user.id === billRoom.host_user_id;
-      
-      // Calculate current total (before finalization)
       const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
       const currentSubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
@@ -545,7 +549,6 @@
           h('div', { className: "text-2xl font-bold" }, billRoom.merchant || "Live Split")
         ),
         h('div', { className: "p-6" },
-          // Share button (only for host)
           isHost && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
             h('div', { className: "flex justify-between items-center" },
               h('div', { className: "font-semibold text-blue-800" }, "Share with Friends"),
@@ -553,7 +556,6 @@
             )
           ),
           
-          // Items selection
           h('div', { className: "mb-6" },
             h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
             billItems.map(item => {
@@ -582,7 +584,6 @@
             })
           ),
           
-          // Current total display
           !myFinalized && h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-5 mb-6" },
             h('div', { className: "flex justify-between items-center" },
               h('div', { className: "text-lg font-semibold" }, "Your Current Subtotal"),
@@ -591,13 +592,11 @@
             h('div', { className: "text-sm opacity-90 mt-2" }, "Tax, tip & fees will be added")
           ),
           
-          // Finalize button
           !myFinalized && myItems.length > 0 && h('button', {
             onClick: onFinalize,
             className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl mb-6"
           }, "Finalize My Total"),
           
-          // Finalized total + Pay button
           myFinalized && h('div', {},
             h('div', { className: "bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl p-6 mb-6" },
               h('div', { className: "text-center" },
@@ -610,9 +609,7 @@
               )
             ),
             h('div', { className: "text-center text-sm text-gray-600" }, 
-              myItems.length > 0 
-                ? `You selected ${myItems.length} item${myItems.length > 1 ? 's' : ''}`
-                : "You haven't selected any items"
+              `You selected ${myItems.length} item${myItems.length !== 1 ? 's' : ''}`
             )
           )
         )
