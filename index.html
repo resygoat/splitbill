@@ -318,7 +318,6 @@
         }
       };
 
-      // FIXED: Immediate local state update
       const toggleItemAssignment = async (itemId) => {
         const item = billItems.find(i => i.id === itemId);
         if (!item) return;
@@ -326,38 +325,50 @@
         const assignedIds = item.assigned_user_ids || [];
         let newAssignedIds;
         
-        // If item is assigned to me, unassign it
         if (assignedIds.includes(user.id)) {
           newAssignedIds = [];
-        } 
-        // If item is unassigned, assign to me
-        else if (assignedIds.length === 0) {
+        } else if (assignedIds.length === 0) {
           newAssignedIds = [user.id];
-        }
-        // If assigned to someone else, do nothing
-        else {
+        } else {
           return;
         }
 
-        // CRITICAL FIX: Update local state IMMEDIATELY for instant UI feedback
+        // Update local state immediately
         setBillItems(billItems.map(i => 
           i.id === itemId ? { ...i, assigned_user_ids: newAssignedIds } : i
         ));
 
-        // Then update database (realtime will sync to others)
+        // Then update database
         await supabaseClient.from('bill_items').update({ assigned_user_ids: newAssignedIds }).eq('id', itemId);
       };
 
+      // FIXED: Calculate tax from billItems, not receipt
       const finalizeMyTotal = () => {
         const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
         const mySubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
-        const taxRate = billRoom.tax / receipt.subtotal;
+        // Calculate TOTAL subtotal from ALL items (for proportional tax calculation)
+        const totalSubtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // My proportional tax
+        const taxRate = totalSubtotal > 0 ? billRoom.tax / totalSubtotal : 0;
         const myTax = mySubtotal * taxRate;
+        
+        // My proportional tip
         const myTip = (mySubtotal + myTax) * (billRoom.tip_percent / 100);
+        
+        // Platform fee
         const baseAmount = mySubtotal + myTax + myTip;
         const platformFee = calculatePlatformFee(baseAmount);
         const total = baseAmount + platformFee;
+
+        console.log('💰 My total breakdown:', {
+          mySubtotal: mySubtotal.toFixed(2),
+          myTax: myTax.toFixed(2),
+          myTip: myTip.toFixed(2),
+          platformFee: platformFee.toFixed(2),
+          total: total.toFixed(2)
+        });
 
         setMyTotal(total);
         setMyFinalized(true);
@@ -366,6 +377,8 @@
       const payHost = async () => {
         if (!billRoom || !user) return;
 
+        console.log('💳 Opening Venmo payment...');
+        
         const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
         
         if (!hostUser?.venmo_username) {
@@ -373,8 +386,12 @@
           return;
         }
 
+        console.log('Paying to:', hostUser.venmo_username, 'Amount:', myTotal.toFixed(2));
+
         const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
         const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
+        
+        console.log('Venmo URL:', venmoUrl);
         window.open(venmoUrl, '_blank');
       };
 
@@ -428,7 +445,7 @@
       if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
       if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
       if (screen === 'live-split') return h(LiveSplitScreen, { 
-        billRoom, billItems, user, myFinalized, myTotal, receipt,
+        billRoom, billItems, user, myFinalized, myTotal,
         onBack: () => setScreen('home'), 
         onShare: shareBill, 
         onToggleItem: toggleItemAssignment, 
@@ -536,7 +553,7 @@
       );
     }
 
-    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, receipt, onBack, onShare, onToggleItem, onFinalize, onPay }) {
+    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, onBack, onShare, onToggleItem, onFinalize, onPay }) {
       if (!billRoom) return null;
       
       const isHost = user.id === billRoom.host_user_id;
