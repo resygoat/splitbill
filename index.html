@@ -146,25 +146,31 @@
             .eq('id', userId)
             .single();
 
+          console.log('Query result:', { data, error });
+
+          if (error) {
+            console.error('❌ Profile load error:', error);
+            setLoading(false);
+            return;
+          }
+
           if (data) {
             console.log('✅ User found:', data.name);
             setUser(data);
             
             if (pendingBillId) {
+              console.log('Loading shared bill:', pendingBillId);
               await loadSharedBill(pendingBillId);
               setPendingBillId(null);
             } else {
-              // CRITICAL FIX: Navigate to home screen
-              console.log('Navigating to home screen');
+              console.log('Navigating to home');
               setScreen('home');
             }
-          } else {
-            console.log('⚠️ No profile found');
           }
         } catch (err) {
-          console.error('Profile load error:', err);
+          console.error('❌ Exception in loadUserProfile:', err);
         } finally {
-          console.log('Setting loading to false');
+          console.log('✅ Setting loading to false');
           setLoading(false);
         }
       };
@@ -173,11 +179,20 @@
         console.log('🔍 Load/create profile:', authUser.id);
         
         try {
-          const { data: existingUser } = await supabaseClient
+          const { data: existingUser, error: fetchError } = await supabaseClient
             .from('users')
             .select('*')
             .eq('id', authUser.id)
             .single();
+
+          console.log('Existing user query:', { existingUser, fetchError });
+
+          if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('❌ Fetch error:', fetchError);
+            setLoading(false);
+            setScreen('home');
+            return;
+          }
 
           if (existingUser) {
             console.log('✅ User found:', existingUser.name);
@@ -191,65 +206,97 @@
               venmo_username: authUser.user_metadata?.venmo_username || ''
             };
 
-            const { data: createdUser } = await supabaseClient
+            const { data: createdUser, error: insertError } = await supabaseClient
               .from('users')
               .insert(newUser)
               .select()
               .single();
 
-            if (createdUser) {
+            console.log('Insert result:', { createdUser, insertError });
+
+            if (insertError) {
+              console.error('❌ Insert error:', insertError);
+            } else if (createdUser) {
               console.log('✅ Profile created:', createdUser.name);
               setUser(createdUser);
             }
           }
           
           if (pendingBillId) {
+            console.log('Loading shared bill:', pendingBillId);
             await loadSharedBill(pendingBillId);
             setPendingBillId(null);
           } else {
-            // CRITICAL FIX: Navigate to home screen after sign in
-            console.log('Navigating to home screen');
+            console.log('Navigating to home');
             setScreen('home');
           }
         } catch (err) {
-          console.error('Profile create error:', err);
+          console.error('❌ Exception in loadOrCreateUserProfile:', err);
         } finally {
-          console.log('Setting loading to false');
+          console.log('✅ Setting loading to false');
           setLoading(false);
         }
       };
 
       const loadSharedBill = async (id) => {
-        const { data: bill } = await supabaseClient
-          .from('bill_rooms')
-          .select('*')
-          .eq('id', id)
-          .single();
+        console.log('🔗 Loading shared bill:', id);
+        
+        try {
+          const { data: bill, error } = await supabaseClient
+            .from('bill_rooms')
+            .select('*')
+            .eq('id', id)
+            .single();
 
-        if (bill) {
-          setBillId(id);
-          setBillRoom(bill);
-          await loadBillItems(id);
-          subscribeToRealtime(id);
-          setScreen('live-split');
+          console.log('Bill query result:', { bill, error });
+
+          if (error) {
+            console.error('❌ Bill load error:', error);
+            alert('Could not load bill. It may have been deleted.');
+            setScreen('home');
+            return;
+          }
+
+          if (bill) {
+            console.log('✅ Bill loaded:', bill.merchant);
+            setBillId(id);
+            setBillRoom(bill);
+            await loadBillItems(id);
+            subscribeToRealtime(id);
+            console.log('Navigating to live-split');
+            setScreen('live-split');
+          } else {
+            console.log('⚠️ Bill not found');
+            alert('Bill not found');
+            setScreen('home');
+          }
+        } catch (err) {
+          console.error('❌ Exception in loadSharedBill:', err);
+          alert('Error loading bill');
+          setScreen('home');
         }
       };
 
       const loadBillItems = async (billRoomId) => {
-        const { data } = await supabaseClient
+        console.log('Loading bill items for:', billRoomId);
+        const { data, error } = await supabaseClient
           .from('bill_items')
           .select('*')
           .eq('bill_room_id', billRoomId);
 
+        console.log('Items loaded:', { count: data?.length, error });
         if (data) setBillItems(data);
       };
 
       const subscribeToRealtime = (billRoomId) => {
+        console.log('Subscribing to realtime for:', billRoomId);
+        
         const roomChannel = supabaseClient
           .channel(`bill_room_${billRoomId}`)
           .on('postgres_changes', 
             { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
             (payload) => {
+              console.log('Room updated:', payload);
               if (payload.eventType === 'UPDATE') setBillRoom(payload.new);
             }
           )
@@ -259,7 +306,10 @@
           .channel(`bill_items_${billRoomId}`)
           .on('postgres_changes',
             { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
-            () => loadBillItems(billRoomId)
+            (payload) => {
+              console.log('Items updated:', payload);
+              loadBillItems(billRoomId);
+            }
           )
           .subscribe();
       };
