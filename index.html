@@ -98,6 +98,10 @@
       const [myFinalized, setMyFinalized] = useState(false);
       const [myTotal, setMyTotal] = useState(0);
       const [orders, setOrders] = useState([]);
+      
+      // NEW: Store user lookup for displaying names
+      const [userLookup, setUserLookup] = useState({});
+      
       const fileRef = useRef(null);
       const pendingBillIdRef = useRef(null);
 
@@ -186,6 +190,7 @@
             setBillId(id);
             setBillRoom(bill);
             await loadBillItems(id);
+            await loadBillUsers(id);
             subscribeToRealtime(id);
             setScreen('live-split');
           } else {
@@ -203,6 +208,34 @@
         if (data) setBillItems(data);
       };
 
+      // NEW: Load all users who have claimed items in this bill
+      const loadBillUsers = async (billRoomId) => {
+        const { data: items } = await supabaseClient.from('bill_items').select('*').eq('bill_room_id', billRoomId);
+        if (!items) return;
+
+        // Collect all unique user IDs from assigned_user_ids
+        const userIds = new Set();
+        items.forEach(item => {
+          if (item.assigned_user_ids) {
+            item.assigned_user_ids.forEach(uid => userIds.add(uid));
+          }
+        });
+
+        // Fetch user info for all participants
+        if (userIds.size > 0) {
+          const { data: users } = await supabaseClient
+            .from('users')
+            .select('id, name')
+            .in('id', Array.from(userIds));
+          
+          if (users) {
+            const lookup = {};
+            users.forEach(u => { lookup[u.id] = u.name; });
+            setUserLookup(lookup);
+          }
+        }
+      };
+
       const subscribeToRealtime = (billRoomId) => {
         supabaseClient.channel(`bill_room_${billRoomId}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
@@ -211,7 +244,10 @@
 
         supabaseClient.channel(`bill_items_${billRoomId}`)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
-            () => loadBillItems(billRoomId))
+            async () => {
+              await loadBillItems(billRoomId);
+              await loadBillUsers(billRoomId);
+            })
           .subscribe();
       };
 
@@ -318,6 +354,7 @@
         }
       };
 
+      // NEW: Allow multiple people to select the same item (splits evenly)
       const toggleItemAssignment = async (itemId) => {
         const item = billItems.find(i => i.id === itemId);
         if (!item) return;
@@ -325,12 +362,13 @@
         const assignedIds = item.assigned_user_ids || [];
         let newAssignedIds;
         
+        // If I've already selected it, remove me
         if (assignedIds.includes(user.id)) {
-          newAssignedIds = [];
-        } else if (assignedIds.length === 0) {
-          newAssignedIds = [user.id];
-        } else {
-          return;
+          newAssignedIds = assignedIds.filter(id => id !== user.id);
+        } 
+        // Otherwise, add me (even if others have selected it)
+        else {
+          newAssignedIds = [...assignedIds, user.id];
         }
 
         // Update local state immediately
@@ -338,23 +376,36 @@
           i.id === itemId ? { ...i, assigned_user_ids: newAssignedIds } : i
         ));
 
+        // Update user lookup if I'm being added
+        if (!userLookup[user.id]) {
+          setUserLookup({ ...userLookup, [user.id]: user.name });
+        }
+
         // Then update database
         await supabaseClient.from('bill_items').update({ assigned_user_ids: newAssignedIds }).eq('id', itemId);
       };
 
-      // FIXED: Calculate tax from billItems, not receipt
       const finalizeMyTotal = () => {
-        const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
-        const mySubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Calculate my total based on items I've selected
+        let myTotal = 0;
         
-        // Calculate TOTAL subtotal from ALL items (for proportional tax calculation)
+        billItems.forEach(item => {
+          if (item.assigned_user_ids?.includes(user.id)) {
+            // Split item cost evenly among all who selected it
+            const splitCount = item.assigned_user_ids.length;
+            const myShare = (item.price * item.quantity) / splitCount;
+            myTotal += myShare;
+          }
+        });
+
+        const mySubtotal = myTotal;
+        
+        // Calculate total subtotal from ALL items
         const totalSubtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         
-        // My proportional tax
+        // My proportional tax & tip
         const taxRate = totalSubtotal > 0 ? billRoom.tax / totalSubtotal : 0;
         const myTax = mySubtotal * taxRate;
-        
-        // My proportional tip
         const myTip = (mySubtotal + myTax) * (billRoom.tip_percent / 100);
         
         // Platform fee
@@ -377,8 +428,6 @@
       const payHost = async () => {
         if (!billRoom || !user) return;
 
-        console.log('💳 Opening Venmo payment...');
-        
         const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
         
         if (!hostUser?.venmo_username) {
@@ -386,12 +435,8 @@
           return;
         }
 
-        console.log('Paying to:', hostUser.venmo_username, 'Amount:', myTotal.toFixed(2));
-
         const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
         const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
-        
-        console.log('Venmo URL:', venmoUrl);
         window.open(venmoUrl, '_blank');
       };
 
@@ -445,7 +490,7 @@
       if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
       if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
       if (screen === 'live-split') return h(LiveSplitScreen, { 
-        billRoom, billItems, user, myFinalized, myTotal,
+        billRoom, billItems, user, myFinalized, myTotal, userLookup,
         onBack: () => setScreen('home'), 
         onShare: shareBill, 
         onToggleItem: toggleItemAssignment, 
@@ -553,12 +598,20 @@
       );
     }
 
-    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, onBack, onShare, onToggleItem, onFinalize, onPay }) {
+    // NEW LiveSplitScreen with user names and item splitting
+    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, userLookup, onBack, onShare, onToggleItem, onFinalize, onPay }) {
       if (!billRoom) return null;
       
       const isHost = user.id === billRoom.host_user_id;
-      const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
-      const currentSubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Calculate current subtotal with split items
+      let currentSubtotal = 0;
+      billItems.forEach(item => {
+        if (item.assigned_user_ids?.includes(user.id)) {
+          const splitCount = item.assigned_user_ids.length;
+          currentSubtotal += (item.price * item.quantity) / splitCount;
+        }
+      });
 
       return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
         h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
@@ -577,25 +630,43 @@
             h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
             billItems.map(item => {
               const isAssignedToMe = item.assigned_user_ids?.includes(user.id);
-              const isAssignedToSomeone = item.assigned_user_ids?.length > 0;
-              const canSelect = !isAssignedToSomeone || isAssignedToMe;
+              const assignedIds = item.assigned_user_ids || [];
+              const assignedCount = assignedIds.length;
+              
+              // Get names of others who selected this item
+              const othersAssigned = assignedIds.filter(id => id !== user.id);
+              const otherNames = othersAssigned.map(id => userLookup[id] || 'Someone').join(', ');
               
               return h('div', { 
                 key: item.id,
-                onClick: () => !myFinalized && canSelect && onToggleItem(item.id),
+                onClick: () => !myFinalized && onToggleItem(item.id),
                 className: `p-4 mb-3 rounded-xl border-2 transition ${
                   myFinalized ? 'cursor-not-allowed opacity-50' : 
-                  !canSelect ? 'cursor-not-allowed border-gray-300 bg-gray-50' :
                   isAssignedToMe ? 'border-blue-600 bg-blue-50 cursor-pointer' : 
+                  assignedCount > 0 ? 'border-purple-400 bg-purple-50 cursor-pointer' :
                   'border-gray-200 cursor-pointer hover:border-blue-300'
                 }`
               },
                 h('div', { className: "flex justify-between items-center" },
                   h('div', { className: "flex-1" },
                     h('div', { className: "font-medium text-gray-900" }, item.name),
-                    isAssignedToSomeone && !isAssignedToMe && h('div', { className: "text-xs text-gray-500 mt-1" }, "Claimed by someone else")
+                    // Show who has claimed it
+                    isAssignedToMe && othersAssigned.length > 0 && h('div', { className: "text-xs text-purple-600 mt-1" }, 
+                      `Splitting with ${otherNames}`
+                    ),
+                    !isAssignedToMe && assignedCount > 0 && h('div', { className: "text-xs text-purple-600 mt-1" }, 
+                      `Selected by ${otherNames}`
+                    ),
+                    assignedCount > 1 && h('div', { className: "text-xs text-blue-600 mt-1 font-semibold" }, 
+                      `Split ${assignedCount} ways`
+                    )
                   ),
-                  h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`)
+                  h('div', { className: "text-right" },
+                    h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`),
+                    isAssignedToMe && assignedCount > 1 && h('div', { className: "text-sm text-blue-600" }, 
+                      `$${((item.price * item.quantity) / assignedCount).toFixed(2)} each`
+                    )
+                  )
                 )
               );
             })
@@ -609,7 +680,7 @@
             h('div', { className: "text-sm opacity-90 mt-2" }, "Tax, tip & fees will be added")
           ),
           
-          !myFinalized && myItems.length > 0 && h('button', {
+          !myFinalized && currentSubtotal > 0 && h('button', {
             onClick: onFinalize,
             className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl mb-6"
           }, "Finalize My Total"),
@@ -624,9 +695,6 @@
                   className: "w-full bg-white text-purple-600 py-4 rounded-xl font-bold text-xl hover:bg-gray-100 transition"
                 }, "Pay Now via Venmo")
               )
-            ),
-            h('div', { className: "text-center text-sm text-gray-600" }, 
-              `You selected ${myItems.length} item${myItems.length !== 1 ? 's' : ''}`
             )
           )
         )
