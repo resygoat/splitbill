@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -11,6 +10,13 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     html, body, #root { height: 100%; margin: 0; padding: 0; }
+    @keyframes pulse-green {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse-green {
+      animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
   </style>
 </head>
 <body>
@@ -18,625 +24,628 @@
   <script>
     const { useState, useEffect, useRef, createElement: h } = React;
 
-```
-const SUPABASE_URL = 'https://yeodatnrpkbrlfhrgjua.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inllb2RhdG5ycGticmxmaHJnanVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMzUyNjUsImV4cCI6MjA4NTkxMTI2NX0.MRZ8IktqD-lw4vggf3EqhfZtnbKt6zQffK6GwesASm4';
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const SUPABASE_URL = 'https://yeodatnrpkbrlfhrgjua.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inllb2RhdG5ycGticmxmaHJnanVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzMzUyNjUsImV4cCI6MjA4NTkxMTI2NX0.MRZ8IktqD-lw4vggf3EqhfZtnbKt6zQffK6GwesASm4';
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const calculatePlatformFee = (amount) => {
-  const fee = 0.25 + (amount * 0.015);
-  return Math.min(fee, 1.99);
-};
+    const calculatePlatformFee = (amount) => {
+      const fee = 0.25 + (amount * 0.015);
+      return Math.min(fee, 1.99);
+    };
 
-// Icons (keeping minimal - same as working version)
-const Camera = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-  h('path', { d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" }),
-  h('circle', { cx: "12", cy: "13", r: "4" })
-);
-const CreditCard = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-  h('rect', { x: "1", y: "4", width: "22", height: "16", rx: "2", ry: "2" }),
-  h('line', { x1: "1", y1: "10", x2: "23", y2: "10" })
-);
-const LogOut = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-  h('path', { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }),
-  h('polyline', { points: "16 17 21 12 16 7" }),
-  h('line', { x1: "21", y1: "12", x2: "9", y2: "12" })
-);
-const ArrowLeft = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-  h('line', { x1: "19", y1: "12", x2: "5", y2: "12" }),
-  h('polyline', { points: "12 19 5 12 12 5" })
-);
-const Scan = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
-  h('path', { d: "M3 7V5a2 2 0 0 1 2-2h2" }),
-  h('path', { d: "M17 3h2a2 2 0 0 1 2 2v2" }),
-  h('path', { d: "M21 17v2a2 2 0 0 1-2 2h-2" }),
-  h('path', { d: "M7 21H5a2 2 0 0 1-2-2v-2" }),
-  h('line', { x1: "3", y1: "12", x2: "21", y2: "12" })
-);
+    // Icons
+    const Camera = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('path', { d: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" }),
+      h('circle', { cx: "12", cy: "13", r: "4" })
+    );
+    const Users = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('path', { d: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" }),
+      h('circle', { cx: "9", cy: "7", r: "4" }),
+      h('path', { d: "M23 21v-2a4 4 0 0 0-3-3.87" }),
+      h('path', { d: "M16 3.13a4 4 0 0 1 0 7.75" })
+    );
+    const CreditCard = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('rect', { x: "1", y: "4", width: "22", height: "16", rx: "2", ry: "2" }),
+      h('line', { x1: "1", y1: "10", x2: "23", y2: "10" })
+    );
+    const Clock = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('circle', { cx: "12", cy: "12", r: "10" }),
+      h('polyline', { points: "12 6 12 12 16 14" })
+    );
+    const CheckCircle = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('path', { d: "M22 11.08V12a10 10 0 1 1-5.93-9.14" }),
+      h('polyline', { points: "22 4 12 14.01 9 11.01" })
+    );
+    const LogOut = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('path', { d: "M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" }),
+      h('polyline', { points: "16 17 21 12 16 7" }),
+      h('line', { x1: "21", y1: "12", x2: "9", y2: "12" })
+    );
+    const ArrowLeft = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('line', { x1: "19", y1: "12", x2: "5", y2: "12" }),
+      h('polyline', { points: "12 19 5 12 12 5" })
+    );
+    const Scan = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('path', { d: "M3 7V5a2 2 0 0 1 2-2h2" }),
+      h('path', { d: "M17 3h2a2 2 0 0 1 2 2v2" }),
+      h('path', { d: "M21 17v2a2 2 0 0 1-2 2h-2" }),
+      h('path', { d: "M7 21H5a2 2 0 0 1-2-2v-2" }),
+      h('line', { x1: "3", y1: "12", x2: "21", y2: "12" })
+    );
+    const Share = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('circle', { cx: "18", cy: "5", r: "3" }),
+      h('circle', { cx: "6", cy: "12", r: "3" }),
+      h('circle', { cx: "18", cy: "19", r: "3" }),
+      h('line', { x1: "8.59", y1: "13.51", x2: "15.42", y2: "17.49" }),
+      h('line', { x1: "15.41", y1: "6.51", x2: "8.59", y2: "10.49" })
+    );
+    const Lock = ({ size = 24 }) => h('svg', { width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "2" },
+      h('rect', { x: "3", y: "11", width: "18", height: "11", rx: "2", ry: "2" }),
+      h('path', { d: "M7 11V7a5 5 0 0 1 10 0v4" })
+    );
 
-function SplitApp() {
-  const [screen, setScreen] = useState('splash');
-  const [user, setUser] = useState(null);
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [receipt, setReceipt] = useState(null);
-  const [image, setImage] = useState(null);
-  const [scanning, setScanning] = useState(false);
-  const [billId, setBillId] = useState(null);
-  const [billRoom, setBillRoom] = useState(null);
-  const [billItems, setBillItems] = useState([]);
-  const [myFinalized, setMyFinalized] = useState(false);
-  const [myTotal, setMyTotal] = useState(0);
-  const [orders, setOrders] = useState([]);
-  
-  // NEW: User lookup for names
-  const [userLookup, setUserLookup] = useState({});
-  
-  const fileRef = useRef(null);
-  const pendingBillIdRef = useRef(null);
+    function SplitApp() {
+      const [screen, setScreen] = useState('splash');
+      const [user, setUser] = useState(null);
+      const [session, setSession] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [receipt, setReceipt] = useState(null);
+      const [image, setImage] = useState(null);
+      const [scanning, setScanning] = useState(false);
+      const [billId, setBillId] = useState(null);
+      const [billRoom, setBillRoom] = useState(null);
+      const [billItems, setBillItems] = useState([]);
+      const [myFinalized, setMyFinalized] = useState(false);
+      const [myTotal, setMyTotal] = useState(0);
+      const [orders, setOrders] = useState([]);
+      const fileRef = useRef(null);
+      const pendingBillIdRef = useRef(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sharedBillId = params.get('bill');
-    if (sharedBillId) {
-      pendingBillIdRef.current = sharedBillId;
-    }
+      useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const sharedBillId = params.get('bill');
+        if (sharedBillId) {
+          pendingBillIdRef.current = sharedBillId;
+        }
 
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        loadUserProfile(session.user.id);
-      } else {
-        setLoading(false);
-      }
-    });
+        supabaseClient.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+          if (session) {
+            loadUserProfile(session.user.id);
+          } else {
+            setLoading(false);
+          }
+        });
 
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
-      setSession(session);
-      if (session && event === 'SIGNED_IN') {
-        await loadOrCreateUserProfile(session.user);
-      } else if (!session) {
-        setUser(null);
-        setLoading(false);
-      }
-    });
+        const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+          setSession(session);
+          if (session && event === 'SIGNED_IN') {
+            await loadOrCreateUserProfile(session.user);
+          } else if (!session) {
+            setUser(null);
+            setLoading(false);
+          }
+        });
 
-    return () => subscription.unsubscribe();
-  }, []);
+        return () => subscription.unsubscribe();
+      }, []);
 
-  const loadUserProfile = async (userId) => {
-    try {
-      const { data } = await supabaseClient.from('users').select('*').eq('id', userId).single();
-      if (data) {
-        setUser(data);
-        if (pendingBillIdRef.current) {
-          await loadSharedBill(pendingBillIdRef.current);
-          pendingBillIdRef.current = null;
-        } else {
+      const loadUserProfile = async (userId) => {
+        try {
+          const { data } = await supabaseClient.from('users').select('*').eq('id', userId).single();
+          if (data) {
+            setUser(data);
+            if (pendingBillIdRef.current) {
+              await loadSharedBill(pendingBillIdRef.current);
+              pendingBillIdRef.current = null;
+            } else {
+              setScreen('home');
+            }
+          }
+        } catch (err) {
+          setScreen('home');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadOrCreateUserProfile = async (authUser) => {
+        try {
+          const { data: existingUser } = await supabaseClient.from('users').select('*').eq('id', authUser.id).single();
+          
+          if (existingUser) {
+            setUser(existingUser);
+          } else {
+            const newUser = {
+              id: authUser.id,
+              email: authUser.email,
+              name: authUser.user_metadata?.name || '',
+              venmo_username: authUser.user_metadata?.venmo_username || ''
+            };
+            const { data: createdUser } = await supabaseClient.from('users').insert(newUser).select().single();
+            if (createdUser) setUser(createdUser);
+          }
+          
+          if (pendingBillIdRef.current) {
+            await loadSharedBill(pendingBillIdRef.current);
+            pendingBillIdRef.current = null;
+          } else {
+            setScreen('home');
+          }
+        } catch (err) {
+          setScreen('home');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const loadSharedBill = async (id) => {
+        try {
+          const { data: bill } = await supabaseClient.from('bill_rooms').select('*').eq('id', id).single();
+          if (bill) {
+            setBillId(id);
+            setBillRoom(bill);
+            await loadBillItems(id);
+            subscribeToRealtime(id);
+            setScreen('live-split');
+          } else {
+            alert('Bill not found!');
+            setScreen('home');
+          }
+        } catch (err) {
+          alert('Failed to load bill');
           setScreen('home');
         }
-      }
-    } catch (err) {
-      setScreen('home');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadOrCreateUserProfile = async (authUser) => {
-    try {
-      const { data: existingUser } = await supabaseClient.from('users').select('*').eq('id', authUser.id).single();
-      
-      if (existingUser) {
-        setUser(existingUser);
-      } else {
-        const newUser = {
-          id: authUser.id,
-          email: authUser.email,
-          name: authUser.user_metadata?.name || '',
-          venmo_username: authUser.user_metadata?.venmo_username || ''
-        };
-        const { data: createdUser } = await supabaseClient.from('users').insert(newUser).select().single();
-        if (createdUser) setUser(createdUser);
-      }
-      
-      if (pendingBillIdRef.current) {
-        await loadSharedBill(pendingBillIdRef.current);
-        pendingBillIdRef.current = null;
-      } else {
-        setScreen('home');
-      }
-    } catch (err) {
-      setScreen('home');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSharedBill = async (id) => {
-    try {
-      const { data: bill } = await supabaseClient.from('bill_rooms').select('*').eq('id', id).single();
-      if (bill) {
-        setBillId(id);
-        setBillRoom(bill);
-        await loadBillItems(id);
-        // NEW: Load user names
-        await loadBillUsers(id);
-        subscribeToRealtime(id);
-        setScreen('live-split');
-      } else {
-        alert('Bill not found!');
-        setScreen('home');
-      }
-    } catch (err) {
-      alert('Failed to load bill');
-      setScreen('home');
-    }
-  };
-
-  const loadBillItems = async (billRoomId) => {
-    const { data } = await supabaseClient.from('bill_items').select('*').eq('bill_room_id', billRoomId);
-    if (data) setBillItems(data);
-  };
-
-  // NEW: Load user names for everyone who selected items
-  const loadBillUsers = async (billRoomId) => {
-    try {
-      const { data: items } = await supabaseClient.from('bill_items').select('*').eq('bill_room_id', billRoomId);
-      if (!items) return;
-
-      const userIds = new Set();
-      items.forEach(item => {
-        if (item.assigned_user_ids) {
-          item.assigned_user_ids.forEach(uid => userIds.add(uid));
-        }
-      });
-
-      if (userIds.size > 0) {
-        const { data: users } = await supabaseClient.from('users').select('id, name').in('id', Array.from(userIds));
-        if (users) {
-          const lookup = {};
-          users.forEach(u => { lookup[u.id] = u.name; });
-          setUserLookup(lookup);
-        }
-      }
-    } catch (err) {
-      console.log('Failed to load user names:', err);
-    }
-  };
-
-  const subscribeToRealtime = (billRoomId) => {
-    supabaseClient.channel(`bill_room_${billRoomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
-        (payload) => { if (payload.eventType === 'UPDATE') setBillRoom(payload.new); })
-      .subscribe();
-
-    supabaseClient.channel(`bill_items_${billRoomId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
-        async () => {
-          await loadBillItems(billRoomId);
-          // NEW: Reload user names when items change
-          await loadBillUsers(billRoomId);
-        })
-      .subscribe();
-  };
-
-  const scanReceipt = async (base64Image) => {
-    try {
-      if (!user?.id) {
-        alert('Please sign in first!');
-        setScanning(false);
-        setScreen('signin');
-        return;
-      }
-
-      setScanning(true);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
-      
-      const response = await fetch('/.netlify/functions/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64Image }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-      if (!response.ok) throw new Error('Scan failed');
-
-      const parsed = await response.json();
-      const newReceipt = {
-        merchant: parsed.merchant || 'Unknown',
-        date: parsed.date || new Date().toLocaleDateString(),
-        items: parsed.items || [],
-        subtotal: parseFloat(parsed.subtotal) || 0,
-        tax: parseFloat(parsed.tax) || 0,
-        tip: parseFloat(parsed.tip) || 0,
-        total: parseFloat(parsed.total) || 0
       };
 
-      setReceipt(newReceipt);
-      await createBillRoom(newReceipt);
-      setScreen("review");
-    } catch (err) {
-      alert(`Scan failed: ${err.message}`);
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  const createBillRoom = async (receiptData) => {
-    const { data: room } = await supabaseClient.from('bill_rooms').insert({
-      host_user_id: user.id,
-      status: 'editing',
-      tax: receiptData.tax,
-      tip_percent: 20,
-      merchant: receiptData.merchant,
-      total: receiptData.total
-    }).select().single();
-
-    if (room) {
-      setBillId(room.id);
-      setBillRoom(room);
-
-      const itemsToInsert = receiptData.items.map(item => ({
-        bill_room_id: room.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity || 1,
-        assigned_user_ids: []
-      }));
-
-      const { data: items } = await supabaseClient.from('bill_items').insert(itemsToInsert).select();
-      if (items) setBillItems(items);
-      subscribeToRealtime(room.id);
-    }
-  };
-
-  const handleUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImage(reader.result);
-        scanReceipt(reader.result);
+      const loadBillItems = async (billRoomId) => {
+        const { data } = await supabaseClient.from('bill_items').select('*').eq('bill_room_id', billRoomId);
+        if (data) setBillItems(data);
       };
-      reader.readAsDataURL(file);
-    }
-  };
 
-  const shareBill = async () => {
-    if (!billId) return;
-    const shareUrl = `${window.location.origin}${window.location.pathname}?bill=${billId}`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Join my bill', url: shareUrl });
-      } catch (err) {
-        if (err.name !== 'AbortError') {
+      const subscribeToRealtime = (billRoomId) => {
+        supabaseClient.channel(`bill_room_${billRoomId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_rooms', filter: `id=eq.${billRoomId}` },
+            (payload) => { if (payload.eventType === 'UPDATE') setBillRoom(payload.new); })
+          .subscribe();
+
+        supabaseClient.channel(`bill_items_${billRoomId}`)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'bill_items', filter: `bill_room_id=eq.${billRoomId}` },
+            () => loadBillItems(billRoomId))
+          .subscribe();
+      };
+
+      const scanReceipt = async (base64Image) => {
+        try {
+          if (!user?.id) {
+            alert('Please sign in first!');
+            setScanning(false);
+            setScreen('signin');
+            return;
+          }
+
+          setScanning(true);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
+          const response = await fetch('/.netlify/functions/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image }),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error('Scan failed');
+
+          const parsed = await response.json();
+          const newReceipt = {
+            merchant: parsed.merchant || 'Unknown',
+            date: parsed.date || new Date().toLocaleDateString(),
+            items: parsed.items || [],
+            subtotal: parseFloat(parsed.subtotal) || 0,
+            tax: parseFloat(parsed.tax) || 0,
+            tip: parseFloat(parsed.tip) || 0,
+            total: parseFloat(parsed.total) || 0
+          };
+
+          setReceipt(newReceipt);
+          await createBillRoom(newReceipt);
+          setScreen("review");
+        } catch (err) {
+          alert(`Scan failed: ${err.message}`);
+        } finally {
+          setScanning(false);
+        }
+      };
+
+      const createBillRoom = async (receiptData) => {
+        const { data: room } = await supabaseClient.from('bill_rooms').insert({
+          host_user_id: user.id,
+          status: 'editing',
+          tax: receiptData.tax,
+          tip_percent: 20,
+          merchant: receiptData.merchant,
+          total: receiptData.total
+        }).select().single();
+
+        if (room) {
+          setBillId(room.id);
+          setBillRoom(room);
+
+          const itemsToInsert = receiptData.items.map(item => ({
+            bill_room_id: room.id,
+            name: item.name,
+            price: item.price,
+            quantity: item.quantity || 1,
+            assigned_user_ids: []
+          }));
+
+          const { data: items } = await supabaseClient.from('bill_items').insert(itemsToInsert).select();
+          if (items) setBillItems(items);
+          subscribeToRealtime(room.id);
+        }
+      };
+
+      const handleUpload = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setImage(reader.result);
+            scanReceipt(reader.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+
+      const shareBill = async () => {
+        if (!billId) return;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?bill=${billId}`;
+        
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: 'Join my bill', url: shareUrl });
+          } catch (err) {
+            if (err.name !== 'AbortError') {
+              await navigator.clipboard.writeText(shareUrl);
+              alert('Link copied!');
+            }
+          }
+        } else {
           await navigator.clipboard.writeText(shareUrl);
           alert('Link copied!');
         }
+      };
+
+      const toggleItemAssignment = async (itemId) => {
+        const item = billItems.find(i => i.id === itemId);
+        if (!item) return;
+
+        const assignedIds = item.assigned_user_ids || [];
+        let newAssignedIds;
+        
+        if (assignedIds.includes(user.id)) {
+          newAssignedIds = [];
+        } else if (assignedIds.length === 0) {
+          newAssignedIds = [user.id];
+        } else {
+          return;
+        }
+
+        // Update local state immediately
+        setBillItems(billItems.map(i => 
+          i.id === itemId ? { ...i, assigned_user_ids: newAssignedIds } : i
+        ));
+
+        // Then update database
+        await supabaseClient.from('bill_items').update({ assigned_user_ids: newAssignedIds }).eq('id', itemId);
+      };
+
+      // FIXED: Calculate tax from billItems, not receipt
+      const finalizeMyTotal = () => {
+        const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
+        const mySubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // Calculate TOTAL subtotal from ALL items (for proportional tax calculation)
+        const totalSubtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // My proportional tax
+        const taxRate = totalSubtotal > 0 ? billRoom.tax / totalSubtotal : 0;
+        const myTax = mySubtotal * taxRate;
+        
+        // My proportional tip
+        const myTip = (mySubtotal + myTax) * (billRoom.tip_percent / 100);
+        
+        // Platform fee
+        const baseAmount = mySubtotal + myTax + myTip;
+        const platformFee = calculatePlatformFee(baseAmount);
+        const total = baseAmount + platformFee;
+
+        console.log('💰 My total breakdown:', {
+          mySubtotal: mySubtotal.toFixed(2),
+          myTax: myTax.toFixed(2),
+          myTip: myTip.toFixed(2),
+          platformFee: platformFee.toFixed(2),
+          total: total.toFixed(2)
+        });
+
+        setMyTotal(total);
+        setMyFinalized(true);
+      };
+
+      const payHost = async () => {
+        if (!billRoom || !user) return;
+
+        console.log('💳 Opening Venmo payment...');
+        
+        const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
+        
+        if (!hostUser?.venmo_username) {
+          alert('Host has not set up Venmo yet!');
+          return;
+        }
+
+        console.log('Paying to:', hostUser.venmo_username, 'Amount:', myTotal.toFixed(2));
+
+        const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
+        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
+        
+        console.log('Venmo URL:', venmoUrl);
+        window.open(venmoUrl, '_blank');
+      };
+
+      const signInWithPassword = async (email, password) => {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) alert(error.message);
+      };
+
+      const signUpWithPassword = async (email, password, name, venmo) => {
+        const { error } = await supabaseClient.auth.signUp({
+          email, password,
+          options: { data: { name, venmo_username: venmo } }
+        });
+        if (error) alert(error.message);
+      };
+
+      const signOut = async () => {
+        await supabaseClient.auth.signOut();
+        setUser(null);
+        setScreen('splash');
+      };
+
+      const updateVenmo = async (venmo) => {
+        await supabaseClient.from('users').update({ venmo_username: venmo }).eq('id', user.id);
+        setUser({ ...user, venmo_username: venmo });
+        alert('Saved!');
+      };
+
+      if (loading) {
+        return h('div', { className: "flex items-center justify-center h-full bg-gradient-to-br from-blue-500 to-purple-600" },
+          h('div', { className: "text-white text-2xl font-bold" }, "Loading...")
+        );
       }
-    } else {
-      await navigator.clipboard.writeText(shareUrl);
-      alert('Link copied!');
-    }
-  };
 
-  // MODIFIED: Allow multiple people to select same item
-  const toggleItemAssignment = async (itemId) => {
-    const item = billItems.find(i => i.id === itemId);
-    if (!item) return;
+      if (scanning) return h('div', { className: "flex flex-col items-center justify-center h-full bg-white p-6" },
+        h('div', { className: "animate-pulse mb-6" }, h(Scan, { size: 80 })),
+        h('div', { className: "text-2xl font-bold text-gray-800 mb-2" }, "Scanning Receipt..."),
+        h('div', { className: "text-gray-600 mb-4" }, "AI is analyzing your bill"),
+        image && h('img', { src: image, alt: "Receipt", className: "mt-6 max-w-full h-64 object-contain rounded-lg shadow-lg" })
+      );
 
-    const assignedIds = item.assigned_user_ids || [];
-    let newAssignedIds;
-    
-    // If I'm assigned, remove me
-    if (assignedIds.includes(user.id)) {
-      newAssignedIds = assignedIds.filter(id => id !== user.id);
-    } else {
-      // Otherwise add me (even if others selected it)
-      newAssignedIds = [...assignedIds, user.id];
-    }
+      if (screen === 'splash') return h('div', { className: "flex flex-col items-center justify-center h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white" },
+        h('div', { className: "text-6xl font-bold mb-4" }, "Split"),
+        h('div', { className: "text-xl mb-12" }, "Split bills with AI precision"),
+        h('button', { onClick: () => setScreen(session ? 'home' : 'signin'), className: "bg-white text-blue-600 px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-100 transition" }, "Get Started")
+      );
 
-    // Update local state immediately
-    setBillItems(billItems.map(i => 
-      i.id === itemId ? { ...i, assigned_user_ids: newAssignedIds } : i
-    ));
+      if (screen === 'signin') return h(SignIn, { onSignIn: signInWithPassword, onSwitch: () => setScreen('signup') });
+      if (screen === 'signup') return h(SignUp, { onSignUp: signUpWithPassword, onSwitch: () => setScreen('signin') });
+      if (screen === 'settings') return h(Settings, { user, onSave: (v) => { updateVenmo(v); setScreen('home'); }, onBack: () => setScreen('home') });
+      if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onTrack: () => setScreen('track'), onSettings: () => setScreen('settings'), onLogout: signOut, orders, fileRef, handleUpload });
+      if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
+      if (screen === 'live-split') return h(LiveSplitScreen, { 
+        billRoom, billItems, user, myFinalized, myTotal,
+        onBack: () => setScreen('home'), 
+        onShare: shareBill, 
+        onToggleItem: toggleItemAssignment, 
+        onFinalize: finalizeMyTotal,
+        onPay: payHost
+      });
+      if (screen === 'track') return h(TrackScreen, { orders, onBack: () => setScreen('home') });
 
-    // Add myself to user lookup
-    if (!userLookup[user.id]) {
-      setUserLookup({ ...userLookup, [user.id]: user.name });
-    }
-
-    // Update database
-    await supabaseClient.from('bill_items').update({ assigned_user_ids: newAssignedIds }).eq('id', itemId);
-  };
-
-  // MODIFIED: Calculate total with split items
-  const finalizeMyTotal = () => {
-    let mySubtotal = 0;
-    
-    billItems.forEach(item => {
-      if (item.assigned_user_ids?.includes(user.id)) {
-        const splitCount = item.assigned_user_ids.length;
-        mySubtotal += (item.price * item.quantity) / splitCount;
-      }
-    });
-    
-    const totalSubtotal = billItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const taxRate = totalSubtotal > 0 ? billRoom.tax / totalSubtotal : 0;
-    const myTax = mySubtotal * taxRate;
-    const myTip = (mySubtotal + myTax) * (billRoom.tip_percent / 100);
-    const baseAmount = mySubtotal + myTax + myTip;
-    const platformFee = calculatePlatformFee(baseAmount);
-    const total = baseAmount + platformFee;
-
-    setMyTotal(total);
-    setMyFinalized(true);
-  };
-
-  const payHost = async () => {
-    if (!billRoom || !user) return;
-    const { data: hostUser } = await supabaseClient.from('users').select('*').eq('id', billRoom.host_user_id).single();
-    
-    if (!hostUser?.venmo_username) {
-      alert('Host has not set up Venmo yet!');
-      return;
+      return h('div', { className: "flex items-center justify-center h-full bg-red-50" },
+        h('div', { className: "text-red-700 text-2xl" }, "Error")
+      );
     }
 
-    const note = encodeURIComponent(`Split - ${billRoom.merchant}`);
-    const venmoUrl = `venmo://paycharge?txn=pay&recipients=${hostUser.venmo_username}&amount=${myTotal.toFixed(2)}&note=${note}`;
-    window.open(venmoUrl, '_blank');
-  };
+    function SignIn({ onSignIn, onSwitch }) {
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      return h('div', { className: "flex flex-col h-full bg-white p-6" },
+        h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign In"),
+        h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('button', { onClick: () => onSignIn(email, password), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" }, "Sign In"),
+        h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Don't have an account? Sign up")
+      );
+    }
 
-  const signInWithPassword = async (email, password) => {
-    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) alert(error.message);
-  };
+    function SignUp({ onSignUp, onSwitch }) {
+      const [name, setName] = useState('');
+      const [email, setEmail] = useState('');
+      const [password, setPassword] = useState('');
+      const [venmo, setVenmo] = useState('');
+      return h('div', { className: "flex flex-col h-full bg-white p-6" },
+        h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign Up"),
+        h('input', { type: "text", placeholder: "Full Name", value: name, onChange: (e) => setName(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('input', { type: "text", placeholder: "Venmo Username", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" }),
+        h('button', { onClick: () => onSignUp(email, password, name, venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4 hover:bg-blue-700 transition" }, "Create Account"),
+        h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Already have an account? Sign in")
+      );
+    }
 
-  const signUpWithPassword = async (email, password, name, venmo) => {
-    const { error } = await supabaseClient.auth.signUp({
-      email, password,
-      options: { data: { name, venmo_username: venmo } }
-    });
-    if (error) alert(error.message);
-  };
-
-  const signOut = async () => {
-    await supabaseClient.auth.signOut();
-    setUser(null);
-    setScreen('splash');
-  };
-
-  const updateVenmo = async (venmo) => {
-    await supabaseClient.from('users').update({ venmo_username: venmo }).eq('id', user.id);
-    setUser({ ...user, venmo_username: venmo });
-    alert('Saved!');
-  };
-
-  if (loading) {
-    return h('div', { className: "flex items-center justify-center h-full bg-gradient-to-br from-blue-500 to-purple-600" },
-      h('div', { className: "text-white text-2xl font-bold" }, "Loading...")
-    );
-  }
-
-  if (scanning) return h('div', { className: "flex flex-col items-center justify-center h-full bg-white p-6" },
-    h('div', { className: "animate-pulse mb-6" }, h(Scan, { size: 80 })),
-    h('div', { className: "text-2xl font-bold text-gray-800 mb-2" }, "Scanning Receipt..."),
-    h('div', { className: "text-gray-600 mb-4" }, "AI is analyzing your bill"),
-    image && h('img', { src: image, alt: "Receipt", className: "mt-6 max-w-full h-64 object-contain rounded-lg shadow-lg" })
-  );
-
-  if (screen === 'splash') return h('div', { className: "flex flex-col items-center justify-center h-full bg-gradient-to-br from-blue-500 to-purple-600 text-white" },
-    h('div', { className: "text-6xl font-bold mb-4" }, "Split"),
-    h('div', { className: "text-xl mb-12" }, "Split bills with AI precision"),
-    h('button', { onClick: () => setScreen(session ? 'home' : 'signin'), className: "bg-white text-blue-600 px-8 py-3 rounded-full font-semibold text-lg hover:bg-gray-100 transition" }, "Get Started")
-  );
-
-  if (screen === 'signin') return h(SignIn, { onSignIn: signInWithPassword, onSwitch: () => setScreen('signup') });
-  if (screen === 'signup') return h(SignUp, { onSignUp: signUpWithPassword, onSwitch: () => setScreen('signin') });
-  if (screen === 'settings') return h(Settings, { user, onSave: (v) => { updateVenmo(v); setScreen('home'); }, onBack: () => setScreen('home') });
-  if (screen === 'home') return h(HomeScreen, { user, onScan: () => fileRef.current?.click(), onSettings: () => setScreen('settings'), onLogout: signOut, fileRef, handleUpload });
-  if (screen === 'review') return h(ReviewScreen, { receipt, onBack: () => setScreen('home'), onStartSplit: () => setScreen('live-split') });
-  if (screen === 'live-split') return h(LiveSplitScreen, { 
-    billRoom, billItems, user, myFinalized, myTotal, userLookup,
-    onBack: () => setScreen('home'), 
-    onShare: shareBill, 
-    onToggleItem: toggleItemAssignment, 
-    onFinalize: finalizeMyTotal,
-    onPay: payHost
-  });
-
-  return h('div', { className: "flex items-center justify-center h-full bg-red-50" },
-    h('div', { className: "text-red-700 text-2xl" }, "Error")
-  );
-}
-
-function SignIn({ onSignIn, onSwitch }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  return h('div', { className: "flex flex-col h-full bg-white p-6" },
-    h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign In"),
-    h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg" }),
-    h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg" }),
-    h('button', { onClick: () => onSignIn(email, password), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4" }, "Sign In"),
-    h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Don't have an account? Sign up")
-  );
-}
-
-function SignUp({ onSignUp, onSwitch }) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [venmo, setVenmo] = useState('');
-  return h('div', { className: "flex flex-col h-full bg-white p-6" },
-    h('div', { className: "text-3xl font-bold text-gray-800 mb-8" }, "Sign Up"),
-    h('input', { type: "text", placeholder: "Full Name", value: name, onChange: (e) => setName(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg" }),
-    h('input', { type: "email", placeholder: "Email", value: email, onChange: (e) => setEmail(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg" }),
-    h('input', { type: "password", placeholder: "Password", value: password, onChange: (e) => setPassword(e.target.value), className: "w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg" }),
-    h('input', { type: "text", placeholder: "Venmo Username", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-6 border border-gray-300 rounded-lg" }),
-    h('button', { onClick: () => onSignUp(email, password, name, venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold mb-4" }, "Create Account"),
-    h('button', { onClick: onSwitch, className: "text-blue-600 text-center" }, "Already have an account? Sign in")
-  );
-}
-
-function Settings({ user, onSave, onBack }) {
-  const [venmo, setVenmo] = useState(user?.venmo_username || '');
-  return h('div', { className: "flex flex-col h-full bg-white" },
-    h('div', { className: "p-6 border-b" },
-      h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-      h('div', { className: "text-2xl font-bold" }, "Settings")
-    ),
-    h('div', { className: "p-6" },
-      h('label', { className: "block text-sm font-semibold mb-2" }, "Venmo Username"),
-      h('input', { type: "text", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-4 border rounded-lg" }),
-      h('button', { onClick: () => onSave(venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold" }, "Save")
-    )
-  );
-}
-
-function HomeScreen({ user, onScan, onSettings, onLogout, fileRef, handleUpload }) {
-  return h('div', { className: "flex flex-col h-full bg-gray-50" },
-    h('div', { className: "bg-white p-6 shadow-sm" },
-      h('div', { className: "flex justify-between items-center mb-4" },
-        h('div', { className: "text-2xl font-bold" }, "Split"),
-        h('div', { className: "flex gap-3" },
-          h('button', { onClick: onSettings }, h(CreditCard, { size: 24 })),
-          h('button', { onClick: onLogout }, h(LogOut, { size: 24 }))
-        )
-      ),
-      h('div', {}, `Welcome, ${user?.name || 'User'}!`),
-      user?.venmo_username && h('div', { className: "text-sm text-green-600" }, `@${user.venmo_username}`)
-    ),
-    h('div', { className: "p-6" },
-      h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white mb-6" },
-        h('div', { className: "text-xl font-semibold mb-4" }, "Scan Receipt"),
-        h('button', { onClick: onScan, className: "bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold flex items-center gap-2" },
-          h(Camera, { size: 20 }), "Take Photo"
+    function Settings({ user, onSave, onBack }) {
+      const [venmo, setVenmo] = useState(user?.venmo_username || '');
+      return h('div', { className: "flex flex-col h-full bg-white" },
+        h('div', { className: "p-6 border-b" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, "Settings")
         ),
-        h('input', { ref: fileRef, type: "file", accept: "image/*", capture: "environment", onChange: handleUpload, className: "hidden" })
-      )
-    )
-  );
-}
-
-function ReviewScreen({ receipt, onBack, onStartSplit }) {
-  if (!receipt) return null;
-  return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
-    h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
-      h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-      h('div', { className: "text-2xl font-bold" }, receipt.merchant)
-    ),
-    h('div', { className: "p-6" },
-      h('div', { className: "bg-gray-50 rounded-xl p-5 mb-6" },
-        h('div', { className: "text-xl font-bold mb-4" }, "Items"),
-        receipt.items?.map((item, i) => h('div', { key: i, className: "flex justify-between py-3 border-b last:border-0" },
-          h('div', { className: "font-medium" }, item.name),
-          h('div', { className: "font-bold" }, `$${item.price.toFixed(2)}`)
-        ))
-      ),
-      h('div', { className: "bg-gray-50 rounded-xl p-5 mb-8" },
-        h('div', { className: "flex justify-between py-2" }, h('span', {}, "Subtotal"), h('span', {}, `$${receipt.subtotal.toFixed(2)}`)),
-        h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tax"), h('span', {}, `$${receipt.tax.toFixed(2)}`)),
-        h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tip"), h('span', {}, `$${receipt.tip.toFixed(2)}`)),
-        h('div', { className: "flex justify-between py-4 border-t-2 mt-2 text-lg font-bold" }, h('span', {}, "Total"), h('span', {}, `$${receipt.total.toFixed(2)}`))
-      ),
-      h('button', { onClick: onStartSplit, className: "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 rounded-xl font-bold text-lg" }, "Start Live Split")
-    )
-  );
-}
-
-// MODIFIED: Show user names and split info
-function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, userLookup, onBack, onShare, onToggleItem, onFinalize, onPay }) {
-  if (!billRoom) return null;
-  
-  const isHost = user.id === billRoom.host_user_id;
-  
-  let currentSubtotal = 0;
-  billItems.forEach(item => {
-    if (item.assigned_user_ids?.includes(user.id)) {
-      const splitCount = item.assigned_user_ids.length;
-      currentSubtotal += (item.price * item.quantity) / splitCount;
+        h('div', { className: "p-6" },
+          h('label', { className: "block text-sm font-semibold mb-2" }, "Venmo Username"),
+          h('input', { type: "text", value: venmo, onChange: (e) => setVenmo(e.target.value), className: "w-full px-4 py-3 mb-4 border rounded-lg" }),
+          h('button', { onClick: () => onSave(venmo), className: "w-full bg-blue-600 text-white py-3 rounded-lg font-semibold" }, "Save")
+        )
+      );
     }
-  });
 
-  return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
-    h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
-      h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
-      h('div', { className: "text-2xl font-bold" }, billRoom.merchant || "Live Split")
-    ),
-    h('div', { className: "p-6" },
-      isHost && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
-        h('button', { onClick: onShare, className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold w-full" }, "Share Link")
-      ),
-      
-      h('div', { className: "mb-6" },
-        h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
-        billItems.map(item => {
-          const isAssignedToMe = item.assigned_user_ids?.includes(user.id);
-          const assignedIds = item.assigned_user_ids || [];
-          const assignedCount = assignedIds.length;
-          const othersAssigned = assignedIds.filter(id => id !== user.id);
-          const otherNames = othersAssigned.map(id => userLookup[id] || 'Someone').join(', ');
-          
-          return h('div', { 
-            key: item.id,
-            onClick: () => !myFinalized && onToggleItem(item.id),
-            className: `p-4 mb-3 rounded-xl border-2 transition ${
-              myFinalized ? 'cursor-not-allowed opacity-50' : 
-              isAssignedToMe ? 'border-blue-600 bg-blue-50 cursor-pointer' : 
-              assignedCount > 0 ? 'border-purple-400 bg-purple-50 cursor-pointer' :
-              'border-gray-200 cursor-pointer hover:border-blue-300'
-            }`
-          },
-            h('div', { className: "flex justify-between items-center" },
-              h('div', { className: "flex-1" },
-                h('div', { className: "font-medium text-gray-900" }, item.name),
-                isAssignedToMe && othersAssigned.length > 0 && h('div', { className: "text-xs text-purple-600 mt-1" }, `Splitting with ${otherNames}`),
-                !isAssignedToMe && assignedCount > 0 && h('div', { className: "text-xs text-purple-600 mt-1" }, `Selected by ${otherNames}`),
-                assignedCount > 1 && h('div', { className: "text-xs text-blue-600 mt-1 font-semibold" }, `Split ${assignedCount} ways`)
-              ),
-              h('div', { className: "text-right" },
-                h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`),
-                isAssignedToMe && assignedCount > 1 && h('div', { className: "text-sm text-blue-600" }, `$${((item.price * item.quantity) / assignedCount).toFixed(2)} each`)
-              )
+    function HomeScreen({ user, onScan, onTrack, onSettings, onLogout, orders, fileRef, handleUpload }) {
+      return h('div', { className: "flex flex-col h-full bg-gray-50" },
+        h('div', { className: "bg-white p-6 shadow-sm" },
+          h('div', { className: "flex justify-between items-center mb-4" },
+            h('div', { className: "text-2xl font-bold" }, "Split"),
+            h('div', { className: "flex gap-3" },
+              h('button', { onClick: onSettings }, h(CreditCard, { size: 24 })),
+              h('button', { onClick: onLogout }, h(LogOut, { size: 24 }))
             )
-          );
-        })
-      ),
-      
-      !myFinalized && h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-5 mb-6" },
-        h('div', { className: "flex justify-between items-center" },
-          h('div', { className: "text-lg font-semibold" }, "Your Current Subtotal"),
-          h('div', { className: "text-3xl font-bold" }, `$${currentSubtotal.toFixed(2)}`)
+          ),
+          h('div', {}, `Welcome, ${user?.name || 'User'}!`),
+          user?.venmo_username && h('div', { className: "text-sm text-green-600" }, `@${user.venmo_username}`)
         ),
-        h('div', { className: "text-sm opacity-90 mt-2" }, "Tax, tip & fees will be added")
-      ),
-      
-      !myFinalized && currentSubtotal > 0 && h('button', {
-        onClick: onFinalize,
-        className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl mb-6"
-      }, "Finalize My Total"),
-      
-      myFinalized && h('div', { className: "bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl p-6 mb-6" },
-        h('div', { className: "text-center" },
-          h('div', { className: "text-sm opacity-90 mb-2" }, "Your Total (with tax, tip & fees)"),
-          h('div', { className: "text-5xl font-bold mb-4" }, `$${myTotal.toFixed(2)}`),
-          !isHost && h('button', {
-            onClick: onPay,
-            className: "w-full bg-white text-purple-600 py-4 rounded-xl font-bold text-xl"
-          }, "Pay Now via Venmo")
+        h('div', { className: "p-6" },
+          h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl p-8 text-white mb-6" },
+            h('div', { className: "text-xl font-semibold mb-4" }, "Scan Receipt"),
+            h('button', { onClick: onScan, className: "bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold flex items-center gap-2" },
+              h(Camera, { size: 20 }), "Take Photo"
+            ),
+            h('input', { ref: fileRef, type: "file", accept: "image/*", capture: "environment", onChange: handleUpload, className: "hidden" })
+          )
         )
-      )
-    )
-  );
-}
+      );
+    }
 
-ReactDOM.render(h(SplitApp), document.getElementById('root'));
-```
+    function ReviewScreen({ receipt, onBack, onStartSplit }) {
+      if (!receipt) return null;
+      return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
+        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, receipt.merchant)
+        ),
+        h('div', { className: "p-6" },
+          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-6" },
+            h('div', { className: "text-xl font-bold mb-4" }, "Items"),
+            receipt.items?.map((item, i) => h('div', { key: i, className: "flex justify-between py-3 border-b last:border-0" },
+              h('div', { className: "font-medium" }, item.name),
+              h('div', { className: "font-bold" }, `$${item.price.toFixed(2)}`)
+            ))
+          ),
+          h('div', { className: "bg-gray-50 rounded-xl p-5 mb-8" },
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Subtotal"), h('span', {}, `$${receipt.subtotal.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tax"), h('span', {}, `$${receipt.tax.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-2" }, h('span', {}, "Tip"), h('span', {}, `$${receipt.tip.toFixed(2)}`)),
+            h('div', { className: "flex justify-between py-4 border-t-2 mt-2 text-lg font-bold" }, h('span', {}, "Total"), h('span', {}, `$${receipt.total.toFixed(2)}`))
+          ),
+          h('button', { onClick: onStartSplit, className: "w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-5 rounded-xl font-bold text-lg" }, "Start Live Split")
+        )
+      );
+    }
 
+    function LiveSplitScreen({ billRoom, billItems, user, myFinalized, myTotal, onBack, onShare, onToggleItem, onFinalize, onPay }) {
+      if (!billRoom) return null;
+      
+      const isHost = user.id === billRoom.host_user_id;
+      const myItems = billItems.filter(item => item.assigned_user_ids?.includes(user.id));
+      const currentSubtotal = myItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+      return h('div', { className: "flex flex-col h-full bg-white overflow-auto" },
+        h('div', { className: "bg-gradient-to-r from-blue-500 to-purple-600 text-white p-6" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, billRoom.merchant || "Live Split")
+        ),
+        h('div', { className: "p-6" },
+          isHost && h('div', { className: "bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6" },
+            h('div', { className: "flex justify-between items-center" },
+              h('div', { className: "font-semibold text-blue-800" }, "Share with Friends"),
+              h('button', { onClick: onShare, className: "bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold" }, "Share Link")
+            )
+          ),
+          
+          h('div', { className: "mb-6" },
+            h('div', { className: "text-lg font-bold mb-3" }, "Select Your Items"),
+            billItems.map(item => {
+              const isAssignedToMe = item.assigned_user_ids?.includes(user.id);
+              const isAssignedToSomeone = item.assigned_user_ids?.length > 0;
+              const canSelect = !isAssignedToSomeone || isAssignedToMe;
+              
+              return h('div', { 
+                key: item.id,
+                onClick: () => !myFinalized && canSelect && onToggleItem(item.id),
+                className: `p-4 mb-3 rounded-xl border-2 transition ${
+                  myFinalized ? 'cursor-not-allowed opacity-50' : 
+                  !canSelect ? 'cursor-not-allowed border-gray-300 bg-gray-50' :
+                  isAssignedToMe ? 'border-blue-600 bg-blue-50 cursor-pointer' : 
+                  'border-gray-200 cursor-pointer hover:border-blue-300'
+                }`
+              },
+                h('div', { className: "flex justify-between items-center" },
+                  h('div', { className: "flex-1" },
+                    h('div', { className: "font-medium text-gray-900" }, item.name),
+                    isAssignedToSomeone && !isAssignedToMe && h('div', { className: "text-xs text-gray-500 mt-1" }, "Claimed by someone else")
+                  ),
+                  h('div', { className: "font-bold text-gray-900" }, `$${(item.price * item.quantity).toFixed(2)}`)
+                )
+              );
+            })
+          ),
+          
+          !myFinalized && h('div', { className: "bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl p-5 mb-6" },
+            h('div', { className: "flex justify-between items-center" },
+              h('div', { className: "text-lg font-semibold" }, "Your Current Subtotal"),
+              h('div', { className: "text-3xl font-bold" }, `$${currentSubtotal.toFixed(2)}`)
+            ),
+            h('div', { className: "text-sm opacity-90 mt-2" }, "Tax, tip & fees will be added")
+          ),
+          
+          !myFinalized && myItems.length > 0 && h('button', {
+            onClick: onFinalize,
+            className: "w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-5 rounded-xl font-bold text-xl mb-6"
+          }, "Finalize My Total"),
+          
+          myFinalized && h('div', {},
+            h('div', { className: "bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-xl p-6 mb-6" },
+              h('div', { className: "text-center" },
+                h('div', { className: "text-sm opacity-90 mb-2" }, "Your Total (with tax, tip & fees)"),
+                h('div', { className: "text-5xl font-bold mb-4" }, `$${myTotal.toFixed(2)}`),
+                !isHost && h('button', {
+                  onClick: onPay,
+                  className: "w-full bg-white text-purple-600 py-4 rounded-xl font-bold text-xl hover:bg-gray-100 transition"
+                }, "Pay Now via Venmo")
+              )
+            ),
+            h('div', { className: "text-center text-sm text-gray-600" }, 
+              `You selected ${myItems.length} item${myItems.length !== 1 ? 's' : ''}`
+            )
+          )
+        )
+      );
+    }
+
+    function TrackScreen({ orders, onBack }) {
+      return h('div', { className: "flex flex-col h-full bg-white" },
+        h('div', { className: "p-6 border-b" },
+          h('button', { onClick: onBack, className: "mb-4" }, h(ArrowLeft, { size: 24 })),
+          h('div', { className: "text-2xl font-bold" }, "Your Orders")
+        ),
+        h('div', { className: "p-6" },
+          h('div', { className: "text-center py-20 text-gray-500" }, "No orders yet")
+        )
+      );
+    }
+
+    ReactDOM.render(h(SplitApp), document.getElementById('root'));
   </script>
 </body>
 </html>
